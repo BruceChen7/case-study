@@ -1,0 +1,19 @@
+version: "3"
+tasks:
+  client:
+    desc: run server
+    cmds:
+      # - nc -l -k 8089 > /dev/null &
+      - python3 send.py 127.0.0.1 8089
+  server:
+    desc: setup nc docker 
+    cmds:
+      - sudo docker build -t nc:latest .
+      - sudo docker run -d -p 8089:8089 --name tcp-sent --rm nc:latest
+    # vars:
+    #   pid:
+    #     sh: lsof -i:8089 | grep -v "python3" | tail -n +2 | awk 'NR==1 {print $2}'
+
+  stop_server:
+    cmds:
+      - sudo docker stop tcp-sent
