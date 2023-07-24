@@ -4,6 +4,9 @@ tasks:
     desc: run server
     cmds:
       # - nc -l -k 8089 > /dev/null &
+      # https://www.kawabangga.com/posts/5217
+      # 如果是本地容器，并没有出现博文出现的cwnd reset的现象
+      # 本地验证
       - python3 send.py 127.0.0.1 8089
   server:
     desc: setup nc docker 
