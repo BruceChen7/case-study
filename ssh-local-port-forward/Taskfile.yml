@@ -1,0 +1,21 @@
+version: "3"
+tasks:
+  build:
+    desc: build docker image
+    cmds:
+      - docker build -t http-server:latest .
+  run-server:
+    desc: run ssh local port forward
+    cmds:
+      - yes no | ssh-keygen -t rsa -N "" -f ~/.ssh/id_test_port
+      - docker run -d --rm  -e PORT=80  -v $HOME/.ssh:/tmp/ssh  --name openssh-local-port-forward-server  http-server:latest
+      # how to define server ip?
+      # SERVER_IP=$(
+      #   docker inspect \
+      #     -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+      #   server
+      # )
+
+  stop_server:
+    cmds:
+      - sudo docker stop tcp-sent
