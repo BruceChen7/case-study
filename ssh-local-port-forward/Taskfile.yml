@@ -23,4 +23,7 @@ tasks:
   run-curl-test:
     cmds:
       - curl 127.0.0.1:8080
+  stop-container:
+    cmds:
+      - sudo docker stop openssh-local-port-forward-server
 
