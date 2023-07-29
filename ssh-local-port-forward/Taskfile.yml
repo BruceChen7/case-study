@@ -3,19 +3,24 @@ tasks:
   build:
     desc: build docker image
     cmds:
-      - docker build -t http-server:latest .
+      - sudo docker build -t http-server:latest .
   run-server:
     desc: run ssh local port forward
     cmds:
-      - yes no | ssh-keygen -t rsa -N "" -f ~/.ssh/id_test_port
-      - docker run -d --rm  -e PORT=80  -v $HOME/.ssh:/tmp/ssh  --name openssh-local-port-forward-server  http-server:latest
-      # how to define server ip?
-      # SERVER_IP=$(
-      #   docker inspect \
-      #     -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
-      #   server
-      # )
-
-  stop_server:
+      - yes no | ssh-keygen -t rsa -N "" -f ~/.ssh/id_test_ssh_port
+      - sudo docker run -d --rm  -e PORT=80  -v $HOME/.ssh:/tmp/ssh  --name openssh-local-port-forward-server  http-server:latest
+  exec-bash:
+    desc: run bash in container
     cmds:
-      - sudo docker stop tcp-sent
+      - sudo docker exec -it openssh-local-port-forward-server bash
+  enable-local-port-forward:
+    cmds:
+      - echo {{.SERVER_IP}}
+      - ssh -i $HOME/.ssh/id_test_ssh_port  -o StrictHostKeyChecking=no -f -N -L 8080:localhost:80 root@{{.SERVER_IP}}
+    vars:
+      SERVER_IP:
+        sh: ./get_container_ip.sh openssh-local-port-forward-server
+  run-curl-test:
+    cmds:
+      - curl 127.0.0.1:8080
+
