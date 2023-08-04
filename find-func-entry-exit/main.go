@@ -6,6 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/pkg/errors"
+	"golang.org/x/arch/x86/x86asm"
 )
 
 var (
@@ -40,31 +43,78 @@ func main() {
 		return
 	}
 	defer ef.Close()
+        fetchReturnAddr(f, ef, *symbolName)
+}
 
+func fetchReturnAddr(f *os.File, ef *elf.File, funcName string) ([]uint64, error) {
 	dw, err := ef.DWARF()
 	if err != nil {
 		fmt.Println("Error reading DWARF data:", err)
-		return
+		return nil, err
 	}
-
-	funcName := *symbolName
-	returnAddr, err := findFuncReturnAddr(dw, funcName)
+	lowpc, highpc, err := findFuncRangeAddrFromDwarf(dw, funcName)
 	if err != nil {
-		fmt.Println("Error finding function:", err)
-		return
+                fmt.Println("Error finding function range:", err)
+                // 尝试从symboltab
+                return nil, err
 	}
+	section := ef.Section(".text")
+        offset := section.Offset
+        size := section.Size
+        textBytes := make([]byte, size)
+        _, err = f.ReadAt(textBytes, int64(offset))
+        if err != nil {
+                return nil, err
+        }
 
-	fmt.Printf("The return address of function %s is %x\n", funcName, returnAddr)
+
+	if highpc > uint64(len(textBytes))+section.Addr || lowpc < section.Addr {
+		err = errors.Wrap(errors.New("PC range too large"), funcName)
+		return nil, err
+	}
+        // lowpc is absolute address, 
+	// instructions := textBytes[lowpc-section.Addr : highpc-section.Addr],
+        instructions := textBytes[lowpc-section.Addr : highpc-section.Addr]
+        offset = lowpc - section.Addr + section.Offset
+        insts := resolveInstructions(instructions)
+        offsets := make([]uint64, 0, len(insts))
+        // return textBytes[lowpc-section.Addr : highpc-section.Addr], nil
+        for _, inst := range insts {
+                if inst.Op == x86asm.RET {
+                        offsets = append(offsets, offset)
+                }
+                offset += uint64(inst.Len)
+        }
+        return offsets, nil
 }
 
-func findFuncReturnAddr(dw *dwarf.Data, funcName string) (uint64, error) {
+func resolveInstructions(bytes []byte) ([]x86asm.Inst) {
+        if len(bytes) == 0 {
+                return nil
+        }
+        insts := make([]x86asm.Inst, 0, len(bytes))
+        for {
+                inst, err := x86asm.Decode(bytes, 64)
+                if err != nil {
+                        inst = x86asm.Inst{Len: 1}
+                }
+                        insts = append(insts, inst)
+                bytes = bytes[inst.Len:]
+                if len(bytes) == 0 {
+                        break
+                }
+        }
+        return insts
+}
+
+func findFuncRangeAddrFromDwarf(dw *dwarf.Data, funcName string) (uint64, uint64, error) {
 	// Search the ".debug_info" section for the function.
 	r := dw.Reader()
 
 	for {
 		entry, err := r.Next()
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
 		// When we reach an entry that is nil, we have read all entries, so exit.
@@ -76,13 +126,12 @@ func findFuncReturnAddr(dw *dwarf.Data, funcName string) (uint64, error) {
 		// we have found the target function.
 		if entry.Tag == dwarf.TagSubprogram {
 			if entry.Val(dwarf.AttrName) == funcName {
-				// The entry's field "AttrLowpc" is the start address in virtual memory
-				// at which the function's machine instructions begin.
-				// The function's return address is thus one less than this.
-				return entry.Val(dwarf.AttrLowpc).(uint64) - uint64(1), nil
+				startAddr := entry.Val(dwarf.AttrLowpc).(uint64)
+				endAddr := entry.Val(dwarf.AttrHighpc).(uint64)
+				return startAddr, endAddr, nil
 			}
 		}
 	}
-	return 0, fmt.Errorf("function %s not found", funcName)
+	return 0, 0, errors.New(fmt.Sprintf("could not find function %s", funcName))
 }
 
