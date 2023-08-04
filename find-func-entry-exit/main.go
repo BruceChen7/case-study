@@ -3,12 +3,29 @@ package main
 import (
 	"debug/dwarf"
 	"debug/elf"
+	"flag"
 	"fmt"
 	"os"
 )
 
+var (
+	binaryPath = flag.String("binary", "", "path to binary")
+	symbolName = flag.String("symbol", "", "name of symbol to find")
+)
+
 func main() {
-	filePath := "./path/to/your/binary"
+	// using flags to parse command line arguments to get file path
+	flag.Parse()
+	if *binaryPath == "" {
+		fmt.Println("binary path is required")
+		os.Exit(1)
+	}
+	if *symbolName == "" {
+		fmt.Println("symbol name is required")
+		os.Exit(1)
+	}
+
+	filePath := *binaryPath
 
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -30,7 +47,7 @@ func main() {
 		return
 	}
 
-	funcName := "yourFunc" // replace with the name of your function
+	funcName := *symbolName
 	returnAddr, err := findFuncReturnAddr(dw, funcName)
 	if err != nil {
 		fmt.Println("Error finding function:", err)
