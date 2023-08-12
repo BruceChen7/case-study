@@ -20,3 +20,7 @@ tasks:
   stop_server:
     cmds:
       - sudo docker stop tcp-sent
+
+  check_tcp_sent:
+    cmds:
+      - while true; do ss -it '( dport = :8089 )'; sleep 0.1; done
