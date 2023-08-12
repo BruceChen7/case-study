@@ -50,6 +50,9 @@ func main() {
 	}
 	fmt.Printf("lowpc: %x, highpc: %x, offsets: %v, return address: %x text addr %x text offset %x \n",
 		lowpc, highpc, offsets, offsets[0]+lowpc, textAddr, textOffset)
+	for _, offset := range offsets {
+		fmt.Printf("all return address: %x\n", offset+lowpc)
+	}
 }
 
 func fetchReturnAddr(f *os.File, ef *elf.File, funcName string) (uint64, uint64, []uint64, uint64, uint64, error) {
