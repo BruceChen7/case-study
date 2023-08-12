@@ -43,68 +43,77 @@ func main() {
 		return
 	}
 	defer ef.Close()
-        fetchReturnAddr(f, ef, *symbolName)
+	lowpc, highpc, offsets, textAddr, textOffset, err := fetchReturnAddr(f, ef, *symbolName)
+	if err != nil {
+		fmt.Println("failed to find return address:", err)
+		return
+	}
+	fmt.Printf("lowpc: %x, highpc: %x, offsets: %v, return address: %x text addr %x text offset %x \n",
+		lowpc, highpc, offsets, offsets[0]+lowpc, textAddr, textOffset)
 }
 
-func fetchReturnAddr(f *os.File, ef *elf.File, funcName string) ([]uint64, error) {
+func fetchReturnAddr(f *os.File, ef *elf.File, funcName string) (uint64, uint64, []uint64, uint64, uint64, error) {
 	dw, err := ef.DWARF()
 	if err != nil {
 		fmt.Println("Error reading DWARF data:", err)
-		return nil, err
+		return 0, 0, nil, 0, 0, err
 	}
 	lowpc, highpc, err := findFuncRangeAddrFromDwarf(dw, funcName)
 	if err != nil {
-                fmt.Println("Error finding function range:", err)
-                // 尝试从symboltab
-                return nil, err
+		fmt.Println("Error finding function range:", err)
+		// TODO(ming.chen): 尝试从symboltab
+		return 0, 0, nil, 0, 0, err
 	}
 	section := ef.Section(".text")
-        offset := section.Offset
-        size := section.Size
-        textBytes := make([]byte, size)
-        _, err = f.ReadAt(textBytes, int64(offset))
-        if err != nil {
-                return nil, err
-        }
-
+	offset := section.Offset
+	size := section.Size
+	textBytes := make([]byte, size)
+	_, err = f.ReadAt(textBytes, int64(offset))
+	if err != nil {
+		fmt.Println("failed to read text section", err)
+		return 0, 0, nil, 0, 0, err
+	}
 
 	if highpc > uint64(len(textBytes))+section.Addr || lowpc < section.Addr {
-		err = errors.Wrap(errors.New("PC range too large"), funcName)
-		return nil, err
+		err = errors.Wrap(errors.New("PC range too large"), "faile to find funcName")
+		fmt.Println("funcName too large")
+		return 0, 0, nil, 0, 0, err
 	}
-        // lowpc is absolute address, 
-	// instructions := textBytes[lowpc-section.Addr : highpc-section.Addr],
-        instructions := textBytes[lowpc-section.Addr : highpc-section.Addr]
-        offset = lowpc - section.Addr + section.Offset
-        insts := resolveInstructions(instructions)
-        offsets := make([]uint64, 0, len(insts))
-        // return textBytes[lowpc-section.Addr : highpc-section.Addr], nil
-        for _, inst := range insts {
-                if inst.Op == x86asm.RET {
-                        offsets = append(offsets, offset)
-                }
-                offset += uint64(inst.Len)
-        }
-        return offsets, nil
+	// lowpc is absolute address,
+	// 因为要放到slice中，需要去
+	instructions := textBytes[lowpc-section.Addr : highpc-section.Addr]
+	// 开始在.text中的搜索，起始的offset
+	// offset = lowpc - section.Addr + section.Offset
+	offset = 0
+	insts := resolveInstructions(instructions)
+	offsets := make([]uint64, 0, len(insts))
+	for _, inst := range insts {
+
+		if inst.Op == x86asm.RET {
+			offsets = append(offsets, offset)
+		}
+		offset += uint64(inst.Len)
+	}
+	return lowpc, highpc, offsets, section.Addr, section.Offset, nil
 }
 
-func resolveInstructions(bytes []byte) ([]x86asm.Inst) {
-        if len(bytes) == 0 {
-                return nil
-        }
-        insts := make([]x86asm.Inst, 0, len(bytes))
-        for {
-                inst, err := x86asm.Decode(bytes, 64)
-                if err != nil {
-                        inst = x86asm.Inst{Len: 1}
-                }
-                        insts = append(insts, inst)
-                bytes = bytes[inst.Len:]
-                if len(bytes) == 0 {
-                        break
-                }
-        }
-        return insts
+func resolveInstructions(bytes []byte) []x86asm.Inst {
+	if len(bytes) == 0 {
+		return nil
+	}
+	insts := make([]x86asm.Inst, 0, len(bytes))
+	for {
+		inst, err := x86asm.Decode(bytes, 64)
+		if err != nil {
+			inst = x86asm.Inst{Len: 1}
+		}
+		insts = append(insts, inst)
+		bytes = bytes[inst.Len:]
+		if len(bytes) == 0 {
+			break
+		}
+	}
+	return insts
 }
 
 func findFuncRangeAddrFromDwarf(dw *dwarf.Data, funcName string) (uint64, uint64, error) {
@@ -128,6 +137,7 @@ func findFuncRangeAddrFromDwarf(dw *dwarf.Data, funcName string) (uint64, uint64
 			if entry.Val(dwarf.AttrName) == funcName {
 				startAddr := entry.Val(dwarf.AttrLowpc).(uint64)
 				endAddr := entry.Val(dwarf.AttrHighpc).(uint64)
+				fmt.Printf("funcname text section %s startAddr %x  and endAddr %x\n", funcName, startAddr, endAddr)
 				return startAddr, endAddr, nil
 			}
 		}
