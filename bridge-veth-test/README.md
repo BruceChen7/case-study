@@ -1,5 +1,5 @@
 ## 什么是bridge
-
+* [Linux 虚拟网络设备](https://morven.life/posts/networking-2-virtual-devices/)
 * 一般叫作网桥，也是一种虚拟网络设备，
 * 所以具有虚拟网络设备的特征，可以配置 IP、MAC 地址等。
 * bridge 是一个虚拟交换机，和物理交换机有类似的功能。
@@ -8,6 +8,17 @@
 * bridge可以工作在二层(链路层)，也可以工作在三层（IP 网路层）。
 * 默认情况下，其工作在二层，可以在同一子网内的的不同主机间转发以太网报文；
 * 当给 bridge 分配了 IP 地址，也就开启了该 bridge 的三层工作模式。
+* 注意下面的练习需要
+    ```bash
+    # echo 1 > /proc/sys/net/ipv4/conf/veth1/accept_local
+    # echo 1 > /proc/sys/net/ipv4/conf/veth0/accept_local
+    # echo 0 > /proc/sys/net/ipv4/conf/veth0/rp_filter
+    # echo 0 > /proc/sys/net/ipv4/conf/veth1/rp_filter
+    # echo 0 > /proc/sys/net/ipv4/conf/all/rp_filter
+    ```
+    * 有些版本的有可能会 ping 不通，原因是默认情况下内核网络配置导致 veth 设备对无法返回 ARP 包，
+    * 解决办法是配置 veth 设备可以返回 ARP 包
+
 * 在 Linux 下，可以用 iproute2 或 brctl 命令对 bridge 进行管理
     ```bash
     sudo ip link add name br0 type bridge
@@ -40,21 +51,21 @@
     ```bash
     # 添加 veth0 和 veth1
     sudo ip link add veth0 type veth peer name veth1
-    sudo ip addr add 192.168.0.132/24 dev veth0
-    sudo ip addr add 192.168.0.133/24 dev veth1
+    sudo ip addr add 20.1.0.10/24 dev veth0
+    sudo ip addr add 20.1.0.11/24 dev veth1
     sudo ip link set veth0 up
     sudo ip link set veth1 up
     ip addr
 
     veth1@veth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
         link/ether c6:bb:54:5c:6d:a6 brd ff:ff:ff:ff:ff:ff
-        inet 192.168.0.133/24 scope global veth1
+        inet 20.1.0.11/24 scope global veth1
            valid_lft forever preferred_lft forever
         inet6 fe80::c4bb:54ff:fe5c:6da6/64 scope link proto kernel_ll 
            valid_lft forever preferred_lft forever
     7: veth0@veth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
         link/ether 12:54:f2:a8:2f:82 brd ff:ff:ff:ff:ff:ff
-        inet 192.168.0.132/24 scope global veth0
+        inet 20.1.0.10/24 scope global veth0
            valid_lft forever preferred_lft forever
         inet6 fe80::1054:f2ff:fea8:2f82/64 scope link proto kernel_ll 
            valid_lft forever preferred_lft forever
@@ -72,10 +83,10 @@
 * 同时**br0的MAC 地址变成了veth0的 MAC 地址**。
 * 可以验证一下：
     ``bash 
-    ping -c 1 -I veth0 192.168.133                                              
-    PING 192.168.133 (192.168.0.133) 来自 192.168.0.132 veth0 56(84) 字节的数据。
-    来自 192.168.0.132 icmp_seq=1 目标主机不可达
-    --- 192.168.133 ping 统计 ---
+    ping -c 1 -I veth0 20.1.0.11                                              
+    PING 20.1.0.11 (20.1.0.10) 来自 20.1.0.10 veth0 56(84) 字节的数据。
+    来自 20.1.0.10 icmp_seq=1 目标主机不可达
+    --- 20.1.0.11 ping 统计 ---
     已发送 1 个包， 已接收 0 个包, +1 错误, 100% packet loss, time 0ms
     ```
 
@@ -94,7 +105,7 @@
     1 packets transmitted, 1 received, 0% packet loss, time 0ms
     rtt min/avg/max/mdev = 0.121/0.121/0.121/0.000 ms
     ```
-* 其实当去掉veth0 的 IP，而给 br0 配置了IP之后，协议栈在**路由的时候不会将数据包发给 veth0**，
+* 其实当去掉veth0 的IP，而给 br0 配置了IP之后，协议栈在**路由的时候不会将数据包发给 veth0**，
 * 为了表达更直观，协议栈和 veth0 之间的连接线去掉，**这时候的veth0 相当于一根网线**。
 
 
