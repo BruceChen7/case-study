@@ -76,21 +76,20 @@
     bridge link
     7: veth0@veth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 master br0 state forwarding priority 32 cost 2
     ```
-* ![img](https://i.loli.net/2020/01/28/NCUXi4l7zBo83ev.jpg))
+* ![img](https://i.loli.net/2020/01/28/NCUXi4l7zBo83ev.jpg)
 * 一旦 br0 和 veth0 连接之后，它们之间将变成双向通道，
 * 内核协议栈和 veth0 之间变成了单通道，
 * **协议栈能发数据给veth0**，veth0**从外面收到的数据不会转发给协议栈**，
 * 同时**br0的MAC 地址变成了veth0的 MAC 地址**。
-* 可以验证一下：
-    ``bash 
+* 验证一下：
+    ```bash 
     ping -c 1 -I veth0 20.1.0.11                                              
     PING 20.1.0.11 (20.1.0.10) 来自 20.1.0.10 veth0 56(84) 字节的数据。
     来自 20.1.0.10 icmp_seq=1 目标主机不可达
     --- 20.1.0.11 ping 统计 ---
     已发送 1 个包， 已接收 0 个包, +1 错误, 100% packet loss, time 0ms
     ```
-
-* 可以看到 veth0 收到应答包后没有给协议栈，而是直接转发给 br0，这样协议栈得不到 veth1 的 MAC 地址，从而 ping 不通。
+* 看到 veth0 收到应答包后没有给协议栈，而是直接转发给 br0，这样协议栈得不到 veth1 的 MAC 地址，从而 ping 不通。
 * br0 在veth 和协议栈之间将数据包给拦截了。
 * 可以理解成下面的结构
     * ![img](https://i.loli.net/2020/01/28/nuKtLZyaRhXqjDp.jpg)
