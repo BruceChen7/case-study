@@ -24,10 +24,16 @@ func main() {
 	if err := bpf.Load(); err != nil {
 		log.Fatal(err)
 	}
+	log.Println("attach kprobes success")
 	defer bpf.Close()
-	_, err := bpf.Attach()
+	kprobes, err := bpf.Attach()
 	if err != nil {
 		log.Fatalf("failed to attach kprobes:%s", err)
 	}
+	defer func() {
+		for _, k := range kprobes {
+			k.Close()
+		}
+	}()
 
 }

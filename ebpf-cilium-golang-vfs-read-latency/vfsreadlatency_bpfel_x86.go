@@ -12,6 +12,11 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type VFSReadLatencyOutputEvents struct {
+	Elapsed     uint64
+	ProcessName [32]int8
+}
+
 // LoadVFSReadLatency returns the embedded CollectionSpec for VFSReadLatency.
 func LoadVFSReadLatency() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_VFSReadLatencyBytes)

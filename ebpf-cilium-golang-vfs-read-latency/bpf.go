@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 )
 
@@ -24,6 +26,7 @@ func NewBPF() *BPF {
 func (b *BPF) Load() error {
 	spec, err := LoadVFSReadLatency()
 	if err != nil {
+		log.Printf("failed to LoadVFSReadLatency %s\n", err)
 		return err
 	}
 	b.objs = &VFSReadLatencyObjects{}
@@ -35,8 +38,17 @@ func (b *BPF) Load() error {
 		// close event stack
 		b.closers = append(b.closers, b.objs.ResultEvents)
 	}()
+	btfSpec, err := btf.LoadKernelSpec()
+	if err != nil {
+		log.Fatalf("failed to load btf spec: %s", err)
+
+	}
 	err = spec.LoadAndAssign(b.objs, &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{LogSize: ebpf.DefaultVerifierLogSize * 4},
+		Programs: ebpf.ProgramOptions{
+			LogSize:     ebpf.DefaultVerifierLogSize * 4,
+			LogLevel:    ebpf.LogLevelInstruction,
+			KernelTypes: btfSpec,
+		},
 	})
 	if err != nil {
 		return err

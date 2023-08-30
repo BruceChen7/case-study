@@ -20,13 +20,12 @@ struct output_events {
 };
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(key_size, sizeof(u32));
-    __uint(value_size, sizeof(u32));
-    __uint(max_entries, 8192);
+    __uint(type, BPF_MAP_TYPE_QUEUE);
+	__type(value, struct output_events);
+	__uint(max_entries, 2048);
 } result_events SEC(".maps");
 
-SEC("sys_read/entry")
+SEC("kprobe/vfs_read_entry")
 int do_entry(struct pt_regs *ctx)
 {
     u32 pid;
@@ -37,7 +36,7 @@ int do_entry(struct pt_regs *ctx)
     return 0;
 }
 
-SEC("sys_read/return")
+SEC("kprobe/vfs_read_return")
 int do_return(struct pt_regs *ctx)
 {
     u32 pid;
@@ -52,7 +51,7 @@ int do_return(struct pt_regs *ctx)
         struct output_events output;
         output.elapsed = delta;
         bpf_probe_read_user(output.process_name, sizeof(output.process_name), comm);
-        bpf_perf_event_output(ctx, &read_events, 0,  &output, sizeof(output));
+        bpf_map_push_elem(&result_events, &output, BPF_EXIST);
     }
     return 0;
 }
