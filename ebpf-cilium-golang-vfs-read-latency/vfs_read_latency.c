@@ -21,8 +21,8 @@ struct output_events {
 
 struct {
     __uint(type, BPF_MAP_TYPE_QUEUE);
-	__type(value, struct output_events);
-	__uint(max_entries, 2048);
+    _type(value, struct output_events);
+    __uint(max_entries, 2048);
 } result_events SEC(".maps");
 
 SEC("kprobe/vfs_read_entry")
