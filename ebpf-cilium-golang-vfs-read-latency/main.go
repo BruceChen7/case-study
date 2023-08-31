@@ -4,7 +4,13 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/cilium/ebpf/rlimit"
 	"golang.org/x/sys/unix"
@@ -35,5 +41,23 @@ func main() {
 			k.Close()
 		}
 	}()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	events := bpf.GetEvents()
+	for {
+		event := Event{}
+		for {
+			if err := events.LookupAndDelete(nil, &event); err == nil {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Microsecond):
+				continue
+			}
 
+		}
+		fmt.Printf("comman %s, elapsed %d\n", event.Comm, event.Elasped)
+	}
 }

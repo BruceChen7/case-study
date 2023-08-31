@@ -23,6 +23,10 @@ func NewBPF() *BPF {
 	return &BPF{}
 }
 
+func (b *BPF) GetEvents() *ebpf.Map {
+	return b.objs.ResultEvents
+}
+
 func (b *BPF) Load() error {
 	spec, err := LoadVFSReadLatency()
 	if err != nil {
