@@ -21,7 +21,7 @@ struct output_events {
 
 struct {
     __uint(type, BPF_MAP_TYPE_QUEUE);
-    _type(value, struct output_events);
+    __type(value, struct output_events);
     __uint(max_entries, 2048);
 } result_events SEC(".maps");
 
