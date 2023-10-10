@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -12,7 +12,7 @@ import (
 func func1(ctx context.Context) {
 	select {
 	case <-ctx.Done():
-		fmt.Println(ctx.Err())
+		log.Println(ctx.Err())
 		return
 	default:
 	}
@@ -20,11 +20,11 @@ func func1(ctx context.Context) {
 	deadline, ok := ctx.Deadline()
 	if ok {
 		remaining := time.Until(deadline)
-		fmt.Println("remaining", remaining)
+		log.Println("remaining", remaining)
 	}
 	select {
 	case <-ctx.Done():
-		fmt.Println(ctx.Err())
+		log.Println(ctx.Err())
 		return
 	default:
 	}

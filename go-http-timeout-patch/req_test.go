@@ -41,7 +41,7 @@ func TestHttpRequestTimeout(t *testing.T) {
 		// elapsed time
 		elapsed := time.Since(now)
 		sec := elapsed.Seconds()
-		require.InDelta(t, 1, sec, 0.1, "timeout is 1 second")
+		require.InDelta(t, 1, sec, 0.01, "timeout is 1 second")
 		require.NotNil(t, err)
 
 		// wait ts to complete
@@ -58,7 +58,7 @@ func TestHttpRequestTimeout(t *testing.T) {
 		_, err = client.Do(req)
 		elapsed = time.Since(now)
 		sec = elapsed.Seconds()
-		require.InDelta(t, 2, sec, 0.1, "timeout is 2 second")
+		require.InDelta(t, 2, sec, 0.01, "timeout is 2 second")
 		require.NotNil(t, err)
 
 	}(ctx)
