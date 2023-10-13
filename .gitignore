@@ -1,6 +1,9 @@
 # Xmake cache
 .xmake/
 build/
+.vscode/
+zig-out/
+zig-cache/
 
 # MacOS Cache
 .DS_Store

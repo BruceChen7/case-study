@@ -23,3 +23,6 @@ size s8Cmp(s8 a, s8 b) {
     }
     return a.len - b.len;
 }
+
+
+// add tests
