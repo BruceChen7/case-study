@@ -8,7 +8,6 @@ pub const Client = struct {
     stream: ?net.Stream,
 
     pub fn init(host: []const u8, port: u16) Client {
-        // 如果host.len != 0 使用host初始化，否则使用localhost
         return Client{
             .host = if (host.len == 0) "localhost" else host,
             .port = port,
