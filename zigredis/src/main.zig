@@ -1,5 +1,7 @@
 const std = @import("std");
 const client = @import("./client.zig");
+const req = @import("./req.zig");
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var alloc = gpa.allocator();
@@ -22,12 +24,20 @@ pub fn main() !void {
     // 输出redis> 到终端
     while (true) {
         // 捕捉Ctrl-c信号
-        if (std.os.sigaction(std.os.SIG.INT, null, null)) |sa| {
-            std.os.sigaction(std.os.SIG.INT, &sa, null);
-        }
+        // if (std.os.sigaction(std.os.SIG.INT, null, null)) |sa| {
+        //     std.os.sigaction(std.os.SIG.INT, &sa, null);
+        // }
 
         try std.io.getStdOut().writer().print("redis> ", .{});
         const line = try std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024);
+
         std.debug.print("{s}\n", .{line});
+        var request = req.Request.init(line);
+
+        var command = request.parse(alloc) catch |err| {
+            std.debug.print("parse error: {s}\n", .{@errorName(err)});
+            continue;
+        };
+        try std.io.getStdOut().writer().print("{s}", .{command.serialize()});
     }
 }
