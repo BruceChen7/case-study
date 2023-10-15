@@ -1,6 +1,7 @@
 const std = @import("std");
 const client = @import("./client.zig");
 const req = @import("./req.zig");
+const rsp = @import("./rsp.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -37,9 +38,17 @@ pub fn main() !void {
             var serializeRsp = try command.serialize(alloc);
             defer alloc.free(serializeRsp.res);
             try c.sendTo(serializeRsp.res, serializeRsp.len);
-            var rsp = try alloc.alloc(u8, 1024);
-            const rsp_size = try c.read(rsp);
-            std.debug.print("size is {d}, {s}\n", .{ rsp_size, rsp });
+
+            var rsp_buf = try alloc.alloc(u8, 1024);
+            defer alloc.free(rsp_buf);
+            const rsp_size = try c.read(rsp_buf);
+            var actRsp = rsp_buf[0..rsp_size];
+            var response = rsp.Resp.init(actRsp);
+            var val = try response.parse(alloc);
+            std.debug.print("{s}\n", .{val.data});
+            if (val.ownedData) {
+                alloc.free(val.data);
+            }
         } else |err| {
             // print errror
             std.debug.print("{s}\n", .{@errorName(err)});
