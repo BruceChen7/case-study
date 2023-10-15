@@ -29,6 +29,7 @@ const Command = union(CommandType) {
 
 const RedisCientError = error{
     AllocatorError,
+    InvalidCommandParam,
     UnknownCommand,
 };
 
@@ -42,8 +43,6 @@ pub const Request = struct {
     }
 
     pub fn parse(self: *Request, alloc: std.mem.Allocator) !Command {
-        // 按照\分割成多个字符串
-        // trim self.content的前后的空格
         self.content = std.mem.trim(u8, self.content, " ");
 
         var lines = std.mem.tokenizeScalar(u8, self.content, ' ');
@@ -56,16 +55,27 @@ pub const Request = struct {
             _ = std.ascii.upperString(buf, line);
 
             if (std.mem.eql(u8, buf, "GET")) {
-                return Command{
-                    .Get = lines.next().?,
-                };
+                var it = lines.next();
+                if (it == null) {
+                    return RedisCientError.InvalidCommandParam;
+                }
+                return Command{ .Get = it.? };
             }
             if (std.mem.eql(u8, buf, "SET")) {
+                var it = lines.next();
+                if (it == null) {
+                    return RedisCientError.InvalidCommandParam;
+                }
+                var key = it.?;
+                it = lines.next();
+                if (it == null) {
+                    return RedisCientError.InvalidCommandParam;
+                }
+                var value = it.?;
                 return Command{
                     .Set = KV{
-                        .key = lines.next().?,
-                        // TODO(ming.chen): add lines compare
-                        .value = lines.next().?,
+                        .key = key,
+                        .value = value,
                     },
                 };
             }
