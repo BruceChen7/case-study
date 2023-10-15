@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const CommandType = enum { Get, Set, Auth };
+const CommandType = enum { Get, Set, Auth, Exit };
 
 pub const KV = struct {
     key: []const u8,
@@ -11,8 +11,9 @@ const Command = union(CommandType) {
     Get: []const u8,
     Set: KV,
     Auth: []const u8,
+    Exit: void,
 
-    pub fn serialize(self: *Command) []const u8 {
+    pub fn serialize(self: *const Command) []const u8 {
         switch (self.*) {
             CommandType.Get => {
                 return "GET";
@@ -22,6 +23,9 @@ const Command = union(CommandType) {
             },
             CommandType.Auth => {
                 return "AUTH";
+            },
+            CommandType.Exit => {
+                return "EXIT";
             },
         }
     }
@@ -82,6 +86,12 @@ pub const Request = struct {
             if (std.mem.eql(u8, buf, "AUTH")) {
                 return Command{
                     .Auth = lines.next().?,
+                };
+            }
+
+            if (std.mem.eql(u8, buf, "EXIT")) {
+                return Command{
+                    .Exit = void{},
                 };
             }
         }
