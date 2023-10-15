@@ -7,25 +7,28 @@ pub const KV = struct {
     value: []const u8,
 };
 
+pub const SerializeResp = struct {
+    res: []const u8,
+    len: u32,
+};
+
 const Command = union(CommandType) {
     Get: []const u8,
     Set: KV,
     Auth: []const u8,
     Exit: void,
 
-    pub fn serialize(self: *const Command) []const u8 {
+    pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeResp {
         switch (self.*) {
-            CommandType.Get => {
-                return "GET";
+            CommandType.Get => |key| {
+                // 字符串拼接
+                // int covert to string
+                const buf = try alloc.alloc(u8, 1024);
+                const rsp = try std.fmt.bufPrint(buf[0..], "*2\r\n$3\r\nGET\r\n${d}\r\n{s}\r\n", .{ key.len, key });
+                return .{ .res = buf, .len = @intCast(rsp.len) };
             },
-            CommandType.Set => {
-                return "SET";
-            },
-            CommandType.Auth => {
-                return "AUTH";
-            },
-            CommandType.Exit => {
-                return "EXIT";
+            else => {
+                return error.UnknownCommand;
             },
         }
     }

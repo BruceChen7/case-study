@@ -34,8 +34,12 @@ pub fn main() !void {
             if (command == .Exit) {
                 std.process.exit(0);
             }
-            var str = command.serialize();
-            std.debug.print("command: {s}\n", .{str});
+            var serializeRsp = try command.serialize(alloc);
+            defer alloc.free(serializeRsp.res);
+            try c.sendTo(serializeRsp.res, serializeRsp.len);
+            var rsp = try alloc.alloc(u8, 1024);
+            const rsp_size = try c.read(rsp);
+            std.debug.print("size is {d}, {s}\n", .{ rsp_size, rsp });
         } else |err| {
             // print errror
             std.debug.print("{s}\n", .{@errorName(err)});

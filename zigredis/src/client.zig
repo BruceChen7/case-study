@@ -19,7 +19,23 @@ pub const Client = struct {
         self.stream = try net.tcpConnectToHost(alloc, self.host, self.port);
     }
     pub fn deinit(self: *Client) void {
-        _ = self;
+        if (self.stream) |s| {
+            s.close();
+        }
+    }
+
+    pub fn sendTo(self: *Client, buf: []const u8, len: u32) !void {
+        // 处理pipe signal, ignore signal
+        var i: u32 = 0;
+        while (i < len) {
+            var count = try self.stream.?.write(buf);
+            i += @intCast(count);
+        }
+    }
+
+    pub fn read(self: *Client, buf: []u8) !usize {
+        var res = try self.stream.?.read(buf);
+        return res;
     }
 };
 
