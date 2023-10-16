@@ -23,6 +23,7 @@ pub const Resp = struct {
                 return RedisRspError.InvalidResp;
             }
             if (std.mem.eql(u8, line[0..1], "+")) {
+                // TODO(ming.chen): add type interger
                 return .{ .data = line[1..], .ownedData = false };
             }
             if (std.mem.eql(u8, line[0..1], "-")) {
