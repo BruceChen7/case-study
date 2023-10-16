@@ -25,8 +25,11 @@ pub const Resp = struct {
                 return RedisRspError.InvalidResp;
             }
             if (std.mem.eql(u8, line[0..1], "+")) {
-                // TODO(ming.chen): add type interger
-                return .{ .data = line[1..], .ownedData = false };
+                // is string
+                var buf = try alloc.alloc(u8, line.len + 1);
+                errdefer alloc.free(buf);
+                var res = try std.fmt.bufPrint(buf, "\"{s}\"", .{line[1..]});
+                return .{ .data = res, .ownedData = true };
             }
             if (std.mem.eql(u8, line[0..1], "-")) {
                 return .{ .data = line[1..], .ownedData = false };
