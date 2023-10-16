@@ -20,7 +20,7 @@ pub fn main() !void {
         std.process.exit(1);
     }
     var host = if (args.len == 1) "127.0.0.1" else args[2];
-    var port = if (args.len == 1) 6379 else try std.fmt.parseInt(u16, args[4], 10);
+    var port = if (args.len == 1) 6379 else std.fmt.parseInt(u16, args[4], 10) catch 6379;
     var c = client.Client.init(host, port);
     try c.connect(alloc);
 
@@ -29,7 +29,13 @@ pub fn main() !void {
     try c.connect(alloc);
     while (true) {
         try std.io.getStdOut().writer().print("{s}:{d}> ", .{ host, port });
-        const line = try std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024);
+        const line = std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024) catch |err| {
+            if (err == error.EndOfStream) {
+                std.debug.print("\n", .{});
+                std.debug.print("GoodBye\n", .{});
+            }
+            std.process.exit(0);
+        };
         var request = req.Request.init(line);
 
         if (request.parse(alloc)) |command| {
