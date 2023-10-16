@@ -19,18 +19,16 @@ pub fn main() !void {
 
         std.process.exit(1);
     }
-    var c: client.Client = undefined;
-    if (args.len == 1) {
-        c = client.Client.init("127.0.0.1", 6379);
-    } else {
-        c = client.Client.init(args[2], try std.fmt.parseInt(u16, args[4], 10));
-    }
-    try c.connect(alloc);
-    defer c.deinit();
+    var host = if (args.len == 1) "127.0.0.1" else args[2];
+    var port = if (args.len == 1) 6379 else try std.fmt.parseInt(u16, args[4], 10);
+    var c = client.Client.init(host, port);
     try c.connect(alloc);
 
+    defer c.deinit();
+
+    try c.connect(alloc);
     while (true) {
-        try std.io.getStdOut().writer().print("redis> ", .{});
+        try std.io.getStdOut().writer().print("{s}:{d}> ", .{ host, port });
         const line = try std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024);
         var request = req.Request.init(line);
 
