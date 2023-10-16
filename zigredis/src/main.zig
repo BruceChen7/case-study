@@ -13,7 +13,7 @@ pub fn main() !void {
     defer std.process.argsFree(gpa.allocator(), args);
 
     // 判断args是否是-h -p
-    if (args.len != 5) {
+    if (args.len != 5 and args.len != 1) {
         // 打印帮助信息
         std.debug.print("Usage: {s} -h <host> -p <port>\n", .{args[0]});
 
@@ -37,7 +37,7 @@ pub fn main() !void {
             }
             var serializeRsp = try command.serialize(alloc);
             defer alloc.free(serializeRsp.res);
-            try c.sendTo(serializeRsp.res, serializeRsp.len);
+            try c.sendTo(alloc, serializeRsp.res, serializeRsp.len);
 
             var rsp_buf = try alloc.alloc(u8, 1024);
             defer alloc.free(rsp_buf);
