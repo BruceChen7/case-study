@@ -32,7 +32,7 @@ pub fn main() !void {
         const line = std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024) catch |err| {
             if (err == error.EndOfStream) {
                 std.debug.print("\n", .{});
-                std.debug.print("GoodBye\n", .{});
+                std.debug.print("GoodBye!\n", .{});
             }
             std.process.exit(0);
         };

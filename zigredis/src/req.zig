@@ -7,6 +7,7 @@ const CommandType = enum {
     Exit,
     Incr,
     Ping,
+    DEL,
 };
 pub fn GetCommandStr(command: CommandType) []const u8 {
     switch (command) {
@@ -27,6 +28,9 @@ pub fn GetCommandStr(command: CommandType) []const u8 {
         },
         .Ping => {
             return "PING";
+        },
+        .DEL => {
+            return "DEL";
         },
     }
     return "";
@@ -54,6 +58,7 @@ const Command = union(CommandType) {
     Auth: KV,
     Exit: void,
     Ping: KV,
+    DEL: KV,
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
@@ -70,6 +75,9 @@ const Command = union(CommandType) {
                 return Command.serializeHelper(alloc, c);
             },
             .Ping => |c| {
+                return Command.serializeHelper(alloc, c);
+            },
+            .DEL => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
@@ -171,6 +179,19 @@ pub const Request = struct {
                     .argsNum = 1,
                     .value = null,
                     .commandStr = "AUTH",
+                } };
+            }
+
+            if (std.mem.eql(u8, buf, GetCommandStr(.DEL))) {
+                var it = lines.next();
+                if (it == null) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                return Command{ .DEL = .{
+                    .key = it.?,
+                    .argsNum = 1,
+                    .value = null,
+                    .commandStr = "DEL",
                 } };
             }
 
