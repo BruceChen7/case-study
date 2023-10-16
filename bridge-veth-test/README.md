@@ -8,7 +8,7 @@
 * bridge可以工作在二层(链路层)，也可以工作在三层（IP 网路层）。
 * 默认情况下，其工作在二层，可以在同一子网内的的不同主机间转发以太网报文；
 * 当给 bridge 分配了 IP 地址，也就开启了该 bridge 的三层工作模式。
-* 注意下面的练习需要
+* 练习需要
     ```bash
     # echo 1 > /proc/sys/net/ipv4/conf/veth1/accept_local
     # echo 1 > /proc/sys/net/ipv4/conf/veth0/accept_local
@@ -28,7 +28,7 @@
         link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
         inet 127.0.0.1/8 scope host lo
            valid_lft forever preferred_lft forever
-        inet6 ::1/128 scope host noprefixroute 
+        inet6 ::1/128 scope host noprefixroute
            valid_lft forever preferred_lft forever
     2: enp0s31f6: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc fq state DOWN group default qlen 1000
         link/ether 8c:16:45:a8:a8:41 brd ff:ff:ff:ff:ff:ff
@@ -36,10 +36,10 @@
         link/ether b4:6b:fc:35:c3:d4 brd ff:ff:ff:ff:ff:ff
         inet 192.168.0.104/24 brd 192.168.0.255 scope global dynamic noprefixroute wlan0
            valid_lft 7092sec preferred_lft 7092sec
-        inet6 fe80::1e94:1d0c:1bfd:c0de/64 scope link noprefixroute 
+        inet6 fe80::1e94:1d0c:1bfd:c0de/64 scope link noprefixroute
            valid_lft forever preferred_lft forever
     4: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1230 qdisc fq state UNKNOWN group default qlen 500
-        link/none 
+        link/none
         inet 192.168.76.15/32 scope global tun0
            valid_lft forever preferred_lft forever
     5: br0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN group default qlen 1000
@@ -61,13 +61,13 @@
         link/ether c6:bb:54:5c:6d:a6 brd ff:ff:ff:ff:ff:ff
         inet 20.1.0.11/24 scope global veth1
            valid_lft forever preferred_lft forever
-        inet6 fe80::c4bb:54ff:fe5c:6da6/64 scope link proto kernel_ll 
+        inet6 fe80::c4bb:54ff:fe5c:6da6/64 scope link proto kernel_ll
            valid_lft forever preferred_lft forever
     7: veth0@veth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
         link/ether 12:54:f2:a8:2f:82 brd ff:ff:ff:ff:ff:ff
         inet 20.1.0.10/24 scope global veth0
            valid_lft forever preferred_lft forever
-        inet6 fe80::1054:f2ff:fea8:2f82/64 scope link proto kernel_ll 
+        inet6 fe80::1054:f2ff:fea8:2f82/64 scope link proto kernel_ll
            valid_lft forever preferred_lft forever
 
     # 将 veth0 连接到 br0
@@ -82,8 +82,8 @@
 * **协议栈能发数据给veth0**，veth0**从外面收到的数据不会转发给协议栈**，
 * 同时**br0的MAC 地址变成了veth0的 MAC 地址**。
 * 验证一下：
-    ```bash 
-    ping -c 1 -I veth0 20.1.0.11                                              
+    ```bash
+    ping -c 1 -I veth0 20.1.0.11
     PING 20.1.0.11 (20.1.0.10) 来自 20.1.0.10 veth0 56(84) 字节的数据。
     来自 20.1.0.10 icmp_seq=1 目标主机不可达
     --- 20.1.0.11 ping 统计 ---
@@ -106,5 +106,4 @@
     ```
 * 其实当去掉veth0 的IP，而给 br0 配置了IP之后，协议栈在**路由的时候不会将数据包发给 veth0**，
 * 为了表达更直观，协议栈和 veth0 之间的连接线去掉，**这时候的veth0 相当于一根网线**。
-
 
