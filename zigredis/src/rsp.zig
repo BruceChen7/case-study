@@ -16,6 +16,8 @@ pub const Resp = struct {
             .raw = data,
         };
     }
+
+    // TODO(ming.chen):  need to return half read of data
     pub fn parse(self: *Resp, alloc: std.mem.Allocator) !ParsedContent {
         var lines = std.mem.tokenizeSequence(u8, self.raw, "\r\n");
         while (lines.next()) |line| {

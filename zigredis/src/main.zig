@@ -27,6 +27,7 @@ pub fn main() !void {
     }
     try c.connect(alloc);
     defer c.deinit();
+    try c.connect(alloc);
 
     while (true) {
         try std.io.getStdOut().writer().print("redis> ", .{});
