@@ -38,28 +38,27 @@ pub fn main() !void {
         };
         var request = req.Request.init(line);
 
-        if (request.parse(alloc)) |command| {
-            if (command == .Exit) {
-                std.process.exit(0);
-            }
-            var serializeRsp = try command.serialize(alloc);
-            defer alloc.free(serializeRsp.res);
-            try c.sendTo(alloc, serializeRsp.res[0..serializeRsp.len]);
-
-            var rsp_buf = try alloc.alloc(u8, 1024);
-            defer alloc.free(rsp_buf);
-            const rsp_size = try c.read(rsp_buf);
-            var actRsp = rsp_buf[0..rsp_size];
-            var response = rsp.Resp.init(actRsp);
-            var val = try response.parse(alloc);
-            std.debug.print("{s}\n", .{val.data});
-            if (val.ownedData) {
-                alloc.free(val.data);
-            }
-        } else |err| {
+        var command = request.parse(alloc) catch |err| {
             // print errror
             std.debug.print("{s}\n", .{@errorName(err)});
             continue;
+        };
+        if (command == .Exit) {
+            std.process.exit(0);
+        }
+        var serializeRsp = try command.serialize(alloc);
+        defer alloc.free(serializeRsp.res);
+        try c.sendTo(alloc, serializeRsp.res[0..serializeRsp.len]);
+
+        var rsp_buf = try alloc.alloc(u8, 1024);
+        defer alloc.free(rsp_buf);
+        const rsp_size = try c.read(rsp_buf);
+        var actRsp = rsp_buf[0..rsp_size];
+        var response = rsp.Resp.init(actRsp);
+        var val = try response.parse(alloc);
+        std.debug.print("{s}\n", .{val.data});
+        if (val.ownedData) {
+            alloc.free(val.data);
         }
     }
 }
