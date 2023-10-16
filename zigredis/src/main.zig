@@ -19,16 +19,18 @@ pub fn main() !void {
 
         std.process.exit(1);
     }
-    // 初始化client
-    var c = client.Client.init(args[2], try std.fmt.parseInt(u16, args[4], 10));
+    var c: client.Client = undefined;
+    if (args.len == 1) {
+        c = client.Client.init("127.0.0.1", 6379);
+    } else {
+        c = client.Client.init(args[2], try std.fmt.parseInt(u16, args[4], 10));
+    }
     try c.connect(alloc);
     defer c.deinit();
 
     while (true) {
         try std.io.getStdOut().writer().print("redis> ", .{});
         const line = try std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024);
-
-        std.debug.print("{s}\n", .{line});
         var request = req.Request.init(line);
 
         if (request.parse(alloc)) |command| {
@@ -37,7 +39,7 @@ pub fn main() !void {
             }
             var serializeRsp = try command.serialize(alloc);
             defer alloc.free(serializeRsp.res);
-            try c.sendTo(alloc, serializeRsp.res, serializeRsp.len);
+            try c.sendTo(alloc, serializeRsp.res[0..serializeRsp.len]);
 
             var rsp_buf = try alloc.alloc(u8, 1024);
             defer alloc.free(rsp_buf);

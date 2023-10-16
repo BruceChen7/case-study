@@ -24,14 +24,15 @@ pub const Client = struct {
         }
     }
 
-    pub fn sendTo(self: *Client, alloc: mem.Allocator, buf: []const u8, len: u32) !void {
+    pub fn sendTo(self: *Client, alloc: mem.Allocator, buf: []const u8) !void {
         var i: u32 = 0;
+        var len = buf.len;
         while (i < len) {
             var count = self.stream.?.write(buf) catch |err| {
                 if (err == std.os.WriteError.BrokenPipe) {
                     // 重新连接
                     self.stream = try net.tcpConnectToHost(alloc, self.host, self.port);
-                    try self.sendTo(alloc, buf, len);
+                    try self.sendTo(alloc, buf);
                 }
                 return err;
             };

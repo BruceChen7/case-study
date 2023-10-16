@@ -36,6 +36,14 @@ pub const Resp = struct {
                 if (buf.len == 0) {
                     return RedisRspError.InvalidResp;
                 }
+                if (buf[0] == '-') {
+                    if (buf.len < 2) {
+                        return RedisRspError.InvalidResp;
+                    }
+                    if (buf[1] == '1') {
+                        return .{ .data = "(nil)", .ownedData = false };
+                    }
+                }
                 const rsp_len = try std.fmt.parseInt(u32, buf, 10);
                 var res = try alloc.alloc(u8, rsp_len);
                 errdefer alloc.free(res);
