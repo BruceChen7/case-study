@@ -29,8 +29,12 @@ pub fn GetCommandStr(command: CommandType) []const u8 {
 }
 
 pub const KV = struct {
+    // GET, SET, AUTH, EXIT etc
+    commandStr: []const u8,
     key: []const u8,
-    value: []const u8,
+    value: ?[]const u8,
+    // for get is 2, for set is 3
+    argsNum: u8,
 };
 
 pub const SerializeReqRes = struct {
@@ -39,33 +43,35 @@ pub const SerializeReqRes = struct {
 };
 
 const Command = union(CommandType) {
-    Get: []const u8,
-    Incr: []const u8,
+    Get: KV,
+    Incr: KV,
     Set: KV,
-    Auth: []const u8,
+    Auth: KV,
     Exit: void,
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get => |key| {
-                const buf = try alloc.alloc(u8, 1024);
-                const rsp = try std.fmt.bufPrint(buf[0..], "*2\r\n$3\r\nGET\r\n${d}\r\n{s}\r\n", .{ key.len, key });
-                return .{ .res = buf, .len = @intCast(rsp.len) };
+            .Get => |c| {
+                return Command.serializeHelper(alloc, c);
             },
             .Set => |kv| {
                 const buf = try alloc.alloc(u8, 1024);
-                const rsp = try std.fmt.bufPrint(buf[0..], "*3\r\n$3\r\nSET\r\n${d}\r\n{s}\r\n${d}\r\n{s}\r\n", .{ kv.key.len, kv.key, kv.value.len, kv.value });
+                const rsp = try std.fmt.bufPrint(buf[0..], "*3\r\n$3\r\nSET\r\n${d}\r\n{s}\r\n${d}\r\n{s}\r\n", .{ kv.key.len, kv.key, kv.value.?.len, kv.value.? });
                 return .{ .res = buf, .len = @intCast(rsp.len) };
             },
-            .Incr => |key| {
-                const buf = try alloc.alloc(u8, 1024);
-                const rsp = try std.fmt.bufPrint(buf[0..], "*2\r\n$4\r\nINCR\r\n${d}\r\n{s}\r\n", .{ key.len, key });
-                return .{ .res = buf, .len = @intCast(rsp.len) };
+            .Incr => |c| {
+                return Command.serializeHelper(alloc, c);
             },
             else => {
                 return RedisClientError.UnknownCommand;
             },
         }
+    }
+
+    fn serializeHelper(alloc: std.mem.Allocator, command: KV) !SerializeReqRes {
+        const buf = try alloc.alloc(u8, 1024);
+        const rsp = try std.fmt.bufPrint(buf[0..], "*{d}\r\n${d}\r\n{s}\r\n${d}\r\n{s}\r\n", .{ command.argsNum + 1, command.commandStr.len, command.commandStr, command.key.len, command.key });
+        return .{ .res = buf, .len = @intCast(rsp.len) };
     }
 };
 
@@ -101,14 +107,14 @@ pub const Request = struct {
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
-                return Command{ .Get = it.? };
+                return Command{ .Get = .{ .key = it.?, .argsNum = 1, .value = null, .commandStr = "GET" } };
             }
             if (std.mem.eql(u8, buf, GetCommandStr(.Incr))) {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
-                return Command{ .Incr = it.? };
+                return Command{ .Incr = .{ .key = it.?, .argsNum = 1, .value = null, .commandStr = "INCR" } };
             }
             if (std.mem.eql(u8, buf, GetCommandStr(.Set))) {
                 var it = lines.next();
@@ -125,13 +131,18 @@ pub const Request = struct {
                     .Set = KV{
                         .key = key,
                         .value = value,
+                        .argsNum = 2,
+                        .commandStr = "SET",
                     },
                 };
             }
             if (std.mem.eql(u8, buf, GetCommandStr(.Auth))) {
-                return Command{
-                    .Auth = lines.next().?,
-                };
+                return Command{ .Auth = .{
+                    .key = lines.next().?,
+                    .argsNum = 1,
+                    .value = null,
+                    .commandStr = "AUTH",
+                } };
             }
 
             if (std.mem.eql(u8, buf, GetCommandStr(.Exit))) {
