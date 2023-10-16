@@ -16,6 +16,7 @@ pub const Client = struct {
     }
 
     pub fn connect(self: *Client, alloc: mem.Allocator) !void {
+        // how to set keep alive
         self.stream = try net.tcpConnectToHost(alloc, self.host, self.port);
     }
     pub fn deinit(self: *Client) void {
