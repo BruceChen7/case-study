@@ -1,6 +1,12 @@
 const std = @import("std");
 
-const CommandType = enum { Get, Set, Auth, Exit };
+const CommandType = enum {
+    Get,
+    Set,
+    Auth,
+    Exit,
+    Incr,
+};
 pub fn GetCommandStr(command: CommandType) []const u8 {
     switch (command) {
         .Get => {
@@ -14,6 +20,9 @@ pub fn GetCommandStr(command: CommandType) []const u8 {
         },
         .Exit => {
             return "EXIT";
+        },
+        .Incr => {
+            return "INCR";
         },
     }
     return "";
@@ -31,6 +40,7 @@ pub const SerializeReqRes = struct {
 
 const Command = union(CommandType) {
     Get: []const u8,
+    Incr: []const u8,
     Set: KV,
     Auth: []const u8,
     Exit: void,
@@ -45,6 +55,11 @@ const Command = union(CommandType) {
             .Set => |kv| {
                 const buf = try alloc.alloc(u8, 1024);
                 const rsp = try std.fmt.bufPrint(buf[0..], "*3\r\n$3\r\nSET\r\n${d}\r\n{s}\r\n${d}\r\n{s}\r\n", .{ kv.key.len, kv.key, kv.value.len, kv.value });
+                return .{ .res = buf, .len = @intCast(rsp.len) };
+            },
+            .Incr => |key| {
+                const buf = try alloc.alloc(u8, 1024);
+                const rsp = try std.fmt.bufPrint(buf[0..], "*2\r\n$4\r\nINCR\r\n${d}\r\n{s}\r\n", .{ key.len, key });
                 return .{ .res = buf, .len = @intCast(rsp.len) };
             },
             else => {
@@ -87,6 +102,13 @@ pub const Request = struct {
                     return RedisClientError.InvalidCommandParam;
                 }
                 return Command{ .Get = it.? };
+            }
+            if (std.mem.eql(u8, buf, GetCommandStr(.Incr))) {
+                var it = lines.next();
+                if (it == null) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                return Command{ .Incr = it.? };
             }
             if (std.mem.eql(u8, buf, GetCommandStr(.Set))) {
                 var it = lines.next();
