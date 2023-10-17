@@ -67,23 +67,7 @@ const Command = union(CommandType) {
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            // TODO(ming.chen): refactor this to make simple
-            .Get => |c| {
-                return Command.serializeHelper(alloc, c);
-            },
-            .Set => |kv| {
-                return Command.serializeHelper(alloc, kv);
-            },
-            .Incr => |c| {
-                return Command.serializeHelper(alloc, c);
-            },
-            .Ping => |c| {
-                return Command.serializeHelper(alloc, c);
-            },
-            .DEL => |c| {
-                return Command.serializeHelper(alloc, c);
-            },
-            .LPUSH => |c| {
+            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
