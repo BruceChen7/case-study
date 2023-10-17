@@ -9,7 +9,10 @@ const CommandType = enum {
     Ping,
     DEL,
     LPUSH,
+    LPOP,
 };
+
+// TODO(ming.chen): 使用compil time 来生成
 pub fn GetCommandStr(command: CommandType) []const u8 {
     switch (command) {
         .Get => {
@@ -36,6 +39,9 @@ pub fn GetCommandStr(command: CommandType) []const u8 {
         .LPUSH => {
             return "LPUSH";
         },
+        .LPOP => {
+            return "LPOP";
+        },
     }
     return "";
 }
@@ -53,6 +59,10 @@ pub const KV = struct {
 pub const SerializeReqRes = struct {
     res: []const u8,
     len: u32,
+
+    pub fn deinit(self: *SerializeReqRes, alloc: std.mem.Allocator) void {
+        alloc.free(self.res);
+    }
 };
 
 const Command = union(CommandType) {
@@ -64,10 +74,11 @@ const Command = union(CommandType) {
     Ping: KV,
     DEL: KV,
     LPUSH: KV,
+    LPOP: KV,
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr => |c| {
+            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
@@ -75,9 +86,10 @@ const Command = union(CommandType) {
             },
         }
     }
-
     fn serializeHelper(alloc: std.mem.Allocator, command: KV) !SerializeReqRes {
         const buf = try alloc.alloc(u8, 1024);
+        errdefer alloc.free(buf);
+
         const totalNum = command.argsNum + 1;
         const commandStr = command.commandStr;
         const keyLen = if (command.key) |key| key.len else 0;
@@ -182,6 +194,25 @@ pub const Request = struct {
                     .argsNum = 1,
                     .value = null,
                     .commandStr = "DEL",
+                } };
+            }
+
+            if (std.mem.eql(u8, buf, GetCommandStr(.LPOP))) {
+                var it = lines.next();
+                if (it == null) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                const key = it.?;
+                it = lines.next();
+                if (it == null) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                const val = it.?;
+                return Command{ .LPOP = .{
+                    .key = key,
+                    .argsNum = 2,
+                    .value = val,
+                    .commandStr = "LPOP",
                 } };
             }
 

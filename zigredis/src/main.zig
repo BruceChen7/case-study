@@ -16,14 +16,13 @@ pub fn main() !void {
     if (args.len != 5 and args.len != 1) {
         // 打印帮助信息
         std.debug.print("Usage: {s} -h <host> -p <port>\n", .{args[0]});
-
         std.process.exit(1);
     }
+
     var host = if (args.len == 1) "127.0.0.1" else args[2];
     var port = if (args.len == 1) 6379 else std.fmt.parseInt(u16, args[4], 10) catch 6379;
     var c = client.Client.init(host, port);
     try c.connect(alloc);
-
     defer c.deinit();
 
     try c.connect(alloc);
@@ -36,8 +35,8 @@ pub fn main() !void {
             }
             std.process.exit(0);
         };
-        var request = req.Request.init(line);
 
+        var request = req.Request.init(line);
         var command = request.parse(alloc) catch |err| {
             // print errror
             std.debug.print("{s}\n", .{@errorName(err)});
@@ -47,7 +46,8 @@ pub fn main() !void {
             std.process.exit(0);
         }
         var serializeRsp = try command.serialize(alloc);
-        defer alloc.free(serializeRsp.res);
+        defer serializeRsp.deinit(alloc);
+
         try c.sendTo(alloc, serializeRsp.res[0..serializeRsp.len]);
 
         var rsp_buf = try alloc.alloc(u8, 1024);
@@ -56,9 +56,9 @@ pub fn main() !void {
         var actRsp = rsp_buf[0..rsp_size];
         var response = rsp.Resp.init(actRsp);
         var val = try response.parse(alloc);
-        std.debug.print("{s}\n", .{val.data});
+        val.print();
         if (val.ownedData) {
-            alloc.free(val.data);
+            val.deinit(alloc);
         }
     }
 }
