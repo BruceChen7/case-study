@@ -12,8 +12,8 @@ const CommandType = enum {
     LPOP,
 };
 
-// TODO(ming.chen): 使用compil time 来生成
-pub fn GetCommandStr(command: CommandType) []const u8 {
+// TODO(ming.chen): 使用compile time 来生成
+pub fn getCommandStr(command: CommandType) []const u8 {
     switch (command) {
         .Get => {
             return "GET";
@@ -138,24 +138,24 @@ pub const Request = struct {
 
             _ = std.ascii.upperString(buf, line);
 
-            if (std.mem.eql(u8, buf, GetCommandStr(.Get))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.Get))) {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
                 return Command{ .Get = .{ .key = it.?, .argsNum = 1, .value = null, .commandStr = "GET" } };
             }
-            if (std.mem.eql(u8, buf, GetCommandStr(.Incr))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.Incr))) {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
                 return Command{ .Incr = .{ .key = it.?, .argsNum = 1, .value = null, .commandStr = "INCR" } };
             }
-            if (std.mem.eql(u8, buf, GetCommandStr(.Ping))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.Ping))) {
                 return Command{ .Ping = .{ .key = null, .argsNum = 0, .value = null, .commandStr = "PING" } };
             }
-            if (std.mem.eql(u8, buf, GetCommandStr(.Set))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.Set))) {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
@@ -175,7 +175,7 @@ pub const Request = struct {
                     },
                 };
             }
-            if (std.mem.eql(u8, buf, GetCommandStr(.Auth))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.Auth))) {
                 return Command{ .Auth = .{
                     .key = lines.next().?,
                     .argsNum = 1,
@@ -184,7 +184,7 @@ pub const Request = struct {
                 } };
             }
 
-            if (std.mem.eql(u8, buf, GetCommandStr(.DEL))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.DEL))) {
                 const it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
@@ -197,7 +197,7 @@ pub const Request = struct {
                 } };
             }
 
-            if (std.mem.eql(u8, buf, GetCommandStr(.LPOP))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.LPOP))) {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
@@ -216,7 +216,7 @@ pub const Request = struct {
                 } };
             }
 
-            if (std.mem.eql(u8, buf, GetCommandStr(.LPUSH))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.LPUSH))) {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
@@ -235,7 +235,7 @@ pub const Request = struct {
                 } };
             }
 
-            if (std.mem.eql(u8, buf, GetCommandStr(.Exit))) {
+            if (std.mem.eql(u8, buf, getCommandStr(.Exit))) {
                 return Command{
                     .Exit = void{},
                 };
@@ -244,3 +244,4 @@ pub const Request = struct {
         return RedisClientError.UnknownCommand;
     }
 };
+
