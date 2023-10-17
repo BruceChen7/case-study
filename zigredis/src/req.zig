@@ -8,6 +8,7 @@ const CommandType = enum {
     Incr,
     Ping,
     DEL,
+    LPUSH,
 };
 pub fn GetCommandStr(command: CommandType) []const u8 {
     switch (command) {
@@ -31,6 +32,9 @@ pub fn GetCommandStr(command: CommandType) []const u8 {
         },
         .DEL => {
             return "DEL";
+        },
+        .LPUSH => {
+            return "LPUSH";
         },
     }
     return "";
@@ -59,16 +63,15 @@ const Command = union(CommandType) {
     Exit: void,
     Ping: KV,
     DEL: KV,
+    LPUSH: KV,
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
+            // TODO(ming.chen): refactor this to make simple
             .Get => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             .Set => |kv| {
-                // const buf = try alloc.alloc(u8, 1024);
-                // const rsp = try std.fmt.bufPrint(buf[0..], "*3\r\n$3\r\nSET\r\n${d}\r\n{s}\r\n${d}\r\n{s}\r\n", .{ kv.key.?.len, kv.key.?, kv.value.?.len, kv.value.? });
-                // return .{ .res = buf, .len = @intCast(rsp.len) };
                 return Command.serializeHelper(alloc, kv);
             },
             .Incr => |c| {
@@ -78,6 +81,9 @@ const Command = union(CommandType) {
                 return Command.serializeHelper(alloc, c);
             },
             .DEL => |c| {
+                return Command.serializeHelper(alloc, c);
+            },
+            .LPUSH => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
@@ -158,12 +164,12 @@ pub const Request = struct {
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
-                var key = it.?;
+                const key = it.?;
                 it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
-                var value = it.?;
+                const value = it.?;
                 return Command{
                     .Set = KV{
                         .key = key,
@@ -183,7 +189,7 @@ pub const Request = struct {
             }
 
             if (std.mem.eql(u8, buf, GetCommandStr(.DEL))) {
-                var it = lines.next();
+                const it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
@@ -192,6 +198,25 @@ pub const Request = struct {
                     .argsNum = 1,
                     .value = null,
                     .commandStr = "DEL",
+                } };
+            }
+
+            if (std.mem.eql(u8, buf, GetCommandStr(.LPUSH))) {
+                var it = lines.next();
+                if (it == null) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                const key = it.?;
+                it = lines.next();
+                if (it == null) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                const val = it.?;
+                return Command{ .LPUSH = .{
+                    .key = key,
+                    .argsNum = 2,
+                    .value = val,
+                    .commandStr = "LPUSH",
                 } };
             }
 
