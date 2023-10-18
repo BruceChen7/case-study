@@ -230,3 +230,12 @@ pub const Request = struct {
         return RedisClientError.UnknownCommand;
     }
 };
+
+test "command tests" {
+    const cmd: Command = Command{
+        .Get = KV{ .key = "key", .argsNum = 1, .value = null, .commandStr = "GET" },
+    };
+    var rsp = try cmd.serialize(std.testing.allocator);
+    defer rsp.deinit(std.testing.allocator);
+    try std.testing.expect(std.mem.eql(u8, "*2\r\n$3\r\nGET\r\n$3\r\nkey\r\n", rsp.res[0..rsp.len]));
+}

@@ -48,6 +48,6 @@ pub const Client = struct {
 };
 
 test "client" {
-    const client = Client.init("127.0.0.1", 6379);
-    try client.connect();
+    var client = Client.init("127.0.0.1", 6379);
+    try client.connect(std.testing.allocator);
 }
