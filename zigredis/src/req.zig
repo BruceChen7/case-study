@@ -106,31 +106,20 @@ pub const Request = struct {
         };
     }
 
-    pub fn parse(self: *Request, alloc: std.mem.Allocator) !Command {
-        _ = alloc;
-        self.content = std.mem.trim(u8, self.content, " ");
-
-        var lines = std.mem.tokenizeScalar(u8, self.content, ' ');
-        // 遍历lines
-        while (lines.next()) |line| {
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Get))) {
+    fn parseHelper(lines: *std.mem.TokenIterator(u8, .scalar), command: CommandType, argNum: u8) !KV {
+        switch (argNum) {
+            0 => {
+                return KV{ .key = null, .argsNum = 0, .value = null, .commandStr = @tagName(command) };
+            },
+            1 => {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
-                return Command{ .Get = .{ .key = it.?, .argsNum = 1, .value = null, .commandStr = "GET" } };
-            }
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Incr))) {
-                var it = lines.next();
-                if (it == null) {
-                    return RedisClientError.InvalidCommandParam;
-                }
-                return Command{ .Incr = .{ .key = it.?, .argsNum = 1, .value = null, .commandStr = "INCR" } };
-            }
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Ping))) {
-                return Command{ .Ping = .{ .key = null, .argsNum = 0, .value = null, .commandStr = "PING" } };
-            }
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Set))) {
+                const key = it.?;
+                return KV{ .key = key, .argsNum = 1, .value = null, .commandStr = @tagName(command) };
+            },
+            2 => {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
@@ -141,89 +130,60 @@ pub const Request = struct {
                     return RedisClientError.InvalidCommandParam;
                 }
                 const value = it.?;
-                return Command{
-                    .Set = KV{
-                        .key = key,
-                        .value = value,
-                        .argsNum = 2,
-                        .commandStr = getCommandStr(.Set),
-                    },
-                };
+                return KV{ .key = key, .argsNum = 2, .value = value, .commandStr = @tagName(command) };
+            },
+            else => {
+                return RedisClientError.InvalidCommandParam;
+            },
+        }
+        return;
+    }
+    pub fn parse(self: *Request) !Command {
+        self.content = std.mem.trim(u8, self.content, " ");
+
+        var lines = std.mem.tokenizeScalar(u8, self.content, ' ');
+        // 遍历lines
+        while (lines.next()) |line| {
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.Get))) {
+                const comand = try parseHelper(&lines, .Get, 1);
+                return Command{ .Get = comand };
             }
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Select))) {
-                var it = lines.next();
-                if (it == null) {
-                    return RedisClientError.InvalidCommandParam;
-                }
-                const key = it.?;
-                return Command{ .Select = .{
-                    .key = key,
-                    .argsNum = 1,
-                    .value = null,
-                    .commandStr = "Select",
-                } };
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.Incr))) {
+                const command = try parseHelper(&lines, .Incr, 1);
+                return Command{ .Incr = command };
             }
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Auth))) {
-                return Command{ .Auth = .{
-                    .key = lines.next().?,
-                    .argsNum = 1,
-                    .value = null,
-                    .commandStr = "AUTH",
-                } };
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.Ping))) {
+                return Command{ .Ping = .{ .key = null, .argsNum = 0, .value = null, .commandStr = "PING" } };
+            }
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.Set))) {
+                const command = try parseHelper(&lines, .Set, 2);
+                return Command{ .Set = command };
+            }
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.Select))) {
+                const command = try parseHelper(&lines, .Select, 1);
+                return Command{ .Select = command };
+            }
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.Auth))) {
+                const command = try parseHelper(&lines, .Auth, 1);
+                return Command{ .Auth = command };
             }
 
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.DEL))) {
-                const it = lines.next();
-                if (it == null) {
-                    return RedisClientError.InvalidCommandParam;
-                }
-                return Command{ .DEL = .{
-                    .key = it.?,
-                    .argsNum = 1,
-                    .value = null,
-                    .commandStr = "DEL",
-                } };
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.DEL))) {
+                const command = try parseHelper(&lines, .DEL, 1);
+                return Command{ .DEL = command };
             }
 
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.LPOP))) {
-                var it = lines.next();
-                if (it == null) {
-                    return RedisClientError.InvalidCommandParam;
-                }
-                const key = it.?;
-                it = lines.next();
-                if (it == null) {
-                    return RedisClientError.InvalidCommandParam;
-                }
-                const val = it.?;
-                return Command{ .LPOP = .{
-                    .key = key,
-                    .argsNum = 2,
-                    .value = val,
-                    .commandStr = "LPOP",
-                } };
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.LPOP))) {
+                const command = try parseHelper(&lines, .LPOP, 2);
+                return Command{ .LPOP = command };
             }
 
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.LPUSH))) {
-                var it = lines.next();
-                if (it == null) {
-                    return RedisClientError.InvalidCommandParam;
-                }
-                const key = it.?;
-                it = lines.next();
-                if (it == null) {
-                    return RedisClientError.InvalidCommandParam;
-                }
-                const val = it.?;
-                return Command{ .LPUSH = .{
-                    .key = key,
-                    .argsNum = 2,
-                    .value = val,
-                    .commandStr = "LPUSH",
-                } };
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.LPUSH))) {
+                const command = try parseHelper(&lines, .LPUSH, 2);
+                return Command{ .LPUSH = command };
             }
 
-            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Exit))) {
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.Exit))) {
                 return Command{
                     .Exit = void{},
                 };

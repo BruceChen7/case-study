@@ -37,7 +37,7 @@ pub fn main() !void {
         };
 
         var request = req.Request.init(line);
-        var command = request.parse(alloc) catch |err| {
+        var command = request.parse() catch |err| {
             // print errror
             std.debug.print("{s}\n", .{@errorName(err)});
             continue;
