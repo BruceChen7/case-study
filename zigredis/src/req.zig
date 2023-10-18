@@ -10,6 +10,7 @@ const CommandType = enum {
     DEL,
     LPUSH,
     LPOP,
+    Select,
 };
 
 pub fn getCommandStr(command: CommandType) []const u8 {
@@ -52,10 +53,11 @@ const Command = union(CommandType) {
     DEL: KV,
     LPUSH: KV,
     LPOP: KV,
+    Select: KV,
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP => |c| {
+            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
@@ -92,6 +94,7 @@ const RedisClientError = error{
     AllocatorError,
     InvalidCommandParam,
     UnknownCommand,
+    NeedMoreData,
 };
 
 pub const Request = struct {
@@ -110,8 +113,6 @@ pub const Request = struct {
         var lines = std.mem.tokenizeScalar(u8, self.content, ' ');
         // 遍历lines
         while (lines.next()) |line| {
-            // 转成大写
-
             if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Get))) {
                 var it = lines.next();
                 if (it == null) {
@@ -145,9 +146,22 @@ pub const Request = struct {
                         .key = key,
                         .value = value,
                         .argsNum = 2,
-                        .commandStr = "SET",
+                        .commandStr = getCommandStr(.Set),
                     },
                 };
+            }
+            if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Select))) {
+                var it = lines.next();
+                if (it == null) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                const key = it.?;
+                return Command{ .Select = .{
+                    .key = key,
+                    .argsNum = 1,
+                    .value = null,
+                    .commandStr = "Select",
+                } };
             }
             if (std.ascii.eqlIgnoreCase(line, comptime getCommandStr(.Auth))) {
                 return Command{ .Auth = .{
