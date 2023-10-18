@@ -37,15 +37,18 @@ pub fn main() !void {
         };
 
         var request = req.Request.init(line);
-        var command = request.parse() catch |err| {
+        var command = request.parse(alloc) catch |err| {
             // print errror
             std.debug.print("{s}\n", .{@errorName(err)});
             continue;
         };
+        defer command.deinit();
+
         if (command == .Exit) {
             std.process.exit(0);
         }
         var serializeRsp = try command.serialize(alloc);
+        // TODO(ming.chen): rewrite it
         defer serializeRsp.deinit(alloc);
 
         try c.sendTo(alloc, serializeRsp.res[0..serializeRsp.len]);
