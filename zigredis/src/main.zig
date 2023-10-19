@@ -4,6 +4,20 @@ const req = @import("req.zig");
 const rsp = @import("rsp.zig");
 const linenose = @cImport(@cInclude("linenoise.h"));
 const libc = @cImport(@cInclude("stdlib.h"));
+const CmdList = std.ArrayList([]const u8);
+
+var cmdCompleteList: CmdList = undefined;
+
+fn setupCompletion(alloc: std.mem.Allocator) !void {
+    cmdCompleteList = CmdList.init(alloc);
+    const fields = @typeInfo(req.CommandType).Enum.fields;
+    inline for (fields) |field| {
+        // 与C 交互的字符串一定要记得这里初始化为0
+        var buf: [1024:0]u8 = .{0} ** 1024;
+        const name = std.ascii.lowerString(&buf, field.name);
+        try cmdCompleteList.append(name);
+    }
+}
 
 pub fn completionCallback(buf: [*c]const u8, lc: [*c]linenose.linenoiseCompletions) callconv(.C) void {
     var b: [:0]const u8 = std.mem.span(buf);
@@ -11,9 +25,12 @@ pub fn completionCallback(buf: [*c]const u8, lc: [*c]linenose.linenoiseCompletio
         return;
     }
 
-    // TODO(ming.chen): add more completions
-    if (b[0] == 'g') {
-        linenose.linenoiseAddCompletion(lc, "get");
+    for (cmdCompleteList.items) |item| {
+        if (std.ascii.eqlIgnoreCase(item[0..1], b[0..1])) {
+            // std.debug.print("{s}, {s}\n", .{ item, b });
+            linenose.linenoiseAddCompletion(lc, item[0..item.len].ptr);
+            // linenose.linenoiseAddCompletion(lc, "get");
+        }
     }
 }
 
@@ -42,6 +59,11 @@ pub fn main() !void {
     try c.connect(alloc);
     linenose.linenoiseSetMultiLine(0);
     linenose.linenoiseSetCompletionCallback(completionCallback);
+    try setupCompletion(alloc);
+    defer cmdCompleteList.deinit();
+    for (cmdCompleteList.items) |item| {
+        std.debug.print("{s}\n", .{item});
+    }
 
     while (true) {
         var buf: [256]u8 = .{0} ** 256;

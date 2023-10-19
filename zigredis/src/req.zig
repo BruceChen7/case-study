@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const CommandType = enum {
+pub const CommandType = enum {
     Get,
     Set,
     Auth,
