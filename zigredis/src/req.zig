@@ -12,6 +12,7 @@ const CommandType = enum {
     LPOP,
     Select,
     LTrim,
+    LRem,
 };
 
 const KV = struct {
@@ -51,11 +52,12 @@ const Command = union(CommandType) {
     LPOP: KV,
     Select: KV,
     LTrim: KV,
+    LRem: KV,
 
     pub fn deinit(self: *const Command) void {
         switch (self.*) {
             .Exit => {},
-            .Get, .Incr, .Set, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim => |c| {
+            .Get, .Incr, .Set, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem => |c| {
                 c.deinit();
             },
         }
@@ -63,7 +65,7 @@ const Command = union(CommandType) {
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim => |c| {
+            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
@@ -145,7 +147,7 @@ pub const Request = struct {
                 try values.append(value);
                 return KV{ .key = key, .argsNum = argNum, .value = values, .commandStr = @tagName(command) };
             },
-            3, 4 => {
+            else => {
                 var it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
@@ -163,9 +165,6 @@ pub const Request = struct {
                     try values.append(value);
                 }
                 return KV{ .key = key, .argsNum = argNum, .value = values, .commandStr = @tagName(command) };
-            },
-            else => {
-                return RedisClientError.InvalidCommandParam;
             },
         }
         return;
@@ -225,6 +224,11 @@ pub const Request = struct {
                 return Command{
                     .Exit = void{},
                 };
+            }
+
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.LRem))) {
+                const command = try parseHelper(alloc, &lines, .LRem, 3);
+                return Command{ .LRem = command };
             }
         }
         return RedisClientError.UnknownCommand;
