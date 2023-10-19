@@ -41,8 +41,12 @@ pub const ParsedContent = struct {
     }
     pub fn print(self: *ParsedContent) void {
         switch (self.data) {
-            .SimpleString, .SimpleErrors, .BulkString, .Integer => |s| {
+            .SimpleString, .SimpleErrors, .BulkString => |s| {
                 std.debug.print("{s}\n", .{s});
+            },
+            .Integer => |s| {
+                // TODO(ming.chen): try to color integer
+                std.debug.print("(integer){s}\n", .{s});
             },
             .Arrays => |content| {
                 if (content == null) {
