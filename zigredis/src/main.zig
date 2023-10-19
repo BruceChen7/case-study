@@ -2,7 +2,7 @@ const std = @import("std");
 const client = @import("./client.zig");
 const req = @import("./req.zig");
 const rsp = @import("./rsp.zig");
-
+const linenose = @cImport(@cInclude("linenoise.h"));
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var alloc = gpa.allocator();
@@ -24,8 +24,10 @@ pub fn main() !void {
     var c = client.Client.init(host, port);
     try c.connect(alloc);
     defer c.deinit();
-
+    // disable multiline
     try c.connect(alloc);
+    linenose.linenoiseSetMultiLine(0);
+
     while (true) {
         try std.io.getStdOut().writer().print("{s}:{d}> ", .{ host, port });
         const line = std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024) catch |err| {
