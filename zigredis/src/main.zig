@@ -1,8 +1,22 @@
 const std = @import("std");
-const client = @import("./client.zig");
-const req = @import("./req.zig");
-const rsp = @import("./rsp.zig");
+const client = @import("client.zig");
+const req = @import("req.zig");
+const rsp = @import("rsp.zig");
 const linenose = @cImport(@cInclude("linenoise.h"));
+const libc = @cImport(@cInclude("stdlib.h"));
+
+pub fn completionCallback(buf: [*c]const u8, lc: [*c]linenose.linenoiseCompletions) callconv(.C) void {
+    var b: [:0]const u8 = std.mem.span(buf);
+    if (b.len == 0) {
+        return;
+    }
+
+    // TODO(ming.chen): add more completions
+    if (b[0] == 'g') {
+        linenose.linenoiseAddCompletion(lc, "get");
+    }
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var alloc = gpa.allocator();
@@ -27,18 +41,22 @@ pub fn main() !void {
     // disable multiline
     try c.connect(alloc);
     linenose.linenoiseSetMultiLine(0);
+    linenose.linenoiseSetCompletionCallback(completionCallback);
 
     while (true) {
-        try std.io.getStdOut().writer().print("{s}:{d}> ", .{ host, port });
-        const line = std.io.getStdIn().reader().readUntilDelimiterAlloc(alloc, '\n', 1024) catch |err| {
-            if (err == error.EndOfStream) {
-                std.debug.print("\n", .{});
-                std.debug.print("GoodBye!\n", .{});
-            }
-            std.process.exit(0);
-        };
+        var buf: [256]u8 = .{0} ** 256;
+        const prompt = try std.fmt.bufPrint(&buf, "{s}:{d}> ", .{ host, port });
 
-        var request = req.Request.init(line);
+        const line = linenose.linenoise(prompt.ptr);
+        if (line == null) {
+            std.debug.print("\n", .{});
+            std.debug.print("GoodBye!\n", .{});
+            std.process.exit(0);
+        }
+        defer libc.free(line);
+        // https://stackoverflow.com/questions/72736997/how-to-pass-a-c-string-into-a-zig-function-expecting-a-zig-string
+        const input: [:0]const u8 = std.mem.span(line.?);
+        var request = req.Request.init(input);
         var command = request.parse(alloc) catch |err| {
             // print errror
             std.debug.print("{s}\n", .{@errorName(err)});

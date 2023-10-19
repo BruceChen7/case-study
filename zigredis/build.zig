@@ -24,8 +24,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    exe.linkLibC();
     exe.addIncludePath(.{ .path = "src/include" });
-    exe.addCSourceFile(.{ .file = .{ .path = "src/include/linenoise.c" }, .flags = &[_][]const u8{"-std=c99"} });
+    exe.addCSourceFile(.{ .file = .{ .path = "src/include/linenoise.c" }, .flags = &[_][]const u8{} });
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
