@@ -119,10 +119,10 @@ pub const Request = struct {
         };
     }
 
-    fn parseHelper(alloc: std.mem.Allocator, lines: *std.mem.TokenIterator(u8, .scalar), command: CommandType, argNum: u8) !KV {
+    fn parseHelper(alloc: std.mem.Allocator, lines: *std.mem.TokenIterator(u8, .scalar), command: CommandType, argNum: i8) !KV {
         switch (argNum) {
             0 => {
-                return KV{ .key = null, .argsNum = argNum, .value = null, .commandStr = @tagName(command) };
+                return KV{ .key = null, .argsNum = @intCast(argNum), .value = null, .commandStr = @tagName(command) };
             },
             1 => {
                 var it = lines.next();
@@ -130,7 +130,7 @@ pub const Request = struct {
                     return RedisClientError.InvalidCommandParam;
                 }
                 const key = it.?;
-                return KV{ .key = key, .argsNum = argNum, .value = null, .commandStr = @tagName(command) };
+                return KV{ .key = key, .argsNum = @intCast(argNum), .value = null, .commandStr = @tagName(command) };
             },
             2 => {
                 var it = lines.next();
@@ -145,7 +145,7 @@ pub const Request = struct {
                 const value = it.?;
                 var values = std.ArrayList([]const u8).init(alloc);
                 try values.append(value);
-                return KV{ .key = key, .argsNum = argNum, .value = values, .commandStr = @tagName(command) };
+                return KV{ .key = key, .argsNum = @intCast(argNum), .value = values, .commandStr = @tagName(command) };
             },
             else => {
                 var it = lines.next();
@@ -158,13 +158,23 @@ pub const Request = struct {
                     return RedisClientError.InvalidCommandParam;
                 }
 
+                var cnt: i8 = 0;
                 var values = std.ArrayList([]const u8).init(alloc);
-                // TODO(ming.chen):  check with argsNum
+                errdefer values.deinit();
+
                 while (it != null) : (it = lines.next()) {
                     const value = it.?;
+                    cnt += @intCast(1);
                     try values.append(value);
                 }
-                return KV{ .key = key, .argsNum = argNum, .value = values, .commandStr = @tagName(command) };
+                if (argNum != -1 and argNum != cnt + 1) {
+                    return RedisClientError.InvalidCommandParam;
+                }
+                var ar = argNum;
+                if (argNum == -1) {
+                    ar = cnt + 1;
+                }
+                return KV{ .key = key, .argsNum = @intCast(ar), .value = values, .commandStr = @tagName(command) };
             },
         }
         return;
@@ -209,9 +219,8 @@ pub const Request = struct {
                 return Command{ .LPOP = command };
             }
 
-            // TODO(ming.chen): more args support
             if (std.ascii.eqlIgnoreCase(line, @tagName(.LPUSH))) {
-                const command = try parseHelper(alloc, &lines, .LPUSH, 2);
+                const command = try parseHelper(alloc, &lines, .LPUSH, -1);
                 return Command{ .LPUSH = command };
             }
 
@@ -242,4 +251,23 @@ test "command tests" {
     var rsp = try cmd.serialize(std.testing.allocator);
     defer rsp.deinit(std.testing.allocator);
     try std.testing.expect(std.mem.eql(u8, "*2\r\n$3\r\nGET\r\n$3\r\nkey\r\n", rsp.res[0..rsp.len]));
+}
+
+test "parse" {
+    const req = @import("./req.zig");
+    var request = req.Request.init("LPUSH d 1 2");
+    var command = try request.parse(std.testing.allocator);
+    defer command.deinit();
+    var arraryValues = std.ArrayList([]const u8).init(std.testing.allocator);
+    var val1 = "1";
+    var sliceVal1: []const u8 = val1[0..];
+    const val2 = "2";
+    try arraryValues.append(sliceVal1);
+    try arraryValues.append(val2);
+    defer arraryValues.deinit();
+
+    const expect = Command{
+        .LPUSH = KV{ .key = "d", .argsNum = 3, .value = arraryValues, .commandStr = "LPUSH" },
+    };
+    try std.testing.expectEqualDeep(command, expect);
 }
