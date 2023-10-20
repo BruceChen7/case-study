@@ -39,9 +39,7 @@ pub fn completionCallback(buf: [*c]const u8, lc: [*c]linenose.linenoiseCompletio
         }
         const len = b.len;
         if (std.ascii.eqlIgnoreCase(item[0..len], b[0..len])) {
-            // std.debug.print("{s}, {s}\n", .{ item, b });
             linenose.linenoiseAddCompletion(lc, item[0..item.len].ptr);
-            // linenose.linenoiseAddCompletion(lc, "get");
         }
     }
 }
@@ -67,8 +65,7 @@ pub fn main() !void {
     var c = client.Client.init(host, port);
     try c.connect(alloc);
     defer c.deinit();
-    // disable multiline
-    try c.connect(alloc);
+
     linenose.linenoiseSetMultiLine(0);
     linenose.linenoiseSetCompletionCallback(completionCallback);
     try setupCompletion(alloc);
