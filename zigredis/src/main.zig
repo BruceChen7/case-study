@@ -13,10 +13,18 @@ fn setupCompletion(alloc: std.mem.Allocator) !void {
     const fields = @typeInfo(req.CommandType).Enum.fields;
     inline for (fields) |field| {
         // 与C 交互的字符串一定要记得这里初始化为0
-        var buf: [1024:0]u8 = .{0} ** 1024;
-        const name = std.ascii.lowerString(&buf, field.name);
+        var buf = try alloc.alloc(u8, field.name.len + 1);
+        @memset(buf, 0);
+        var name = std.ascii.lowerString(buf, field.name);
         try cmdCompleteList.append(name);
     }
+}
+
+fn deinitCompletionList(alloc: std.mem.Allocator) void {
+    for (cmdCompleteList.items) |item| {
+        alloc.free(item);
+    }
+    cmdCompleteList.deinit();
 }
 
 pub fn completionCallback(buf: [*c]const u8, lc: [*c]linenose.linenoiseCompletions) callconv(.C) void {
@@ -26,7 +34,11 @@ pub fn completionCallback(buf: [*c]const u8, lc: [*c]linenose.linenoiseCompletio
     }
 
     for (cmdCompleteList.items) |item| {
-        if (std.ascii.eqlIgnoreCase(item[0..1], b[0..1])) {
+        if (b.len > item.len) {
+            return;
+        }
+        const len = b.len;
+        if (std.ascii.eqlIgnoreCase(item[0..len], b[0..len])) {
             // std.debug.print("{s}, {s}\n", .{ item, b });
             linenose.linenoiseAddCompletion(lc, item[0..item.len].ptr);
             // linenose.linenoiseAddCompletion(lc, "get");
@@ -60,16 +72,13 @@ pub fn main() !void {
     linenose.linenoiseSetMultiLine(0);
     linenose.linenoiseSetCompletionCallback(completionCallback);
     try setupCompletion(alloc);
-    defer cmdCompleteList.deinit();
-    for (cmdCompleteList.items) |item| {
-        std.debug.print("{s}\n", .{item});
-    }
+    defer deinitCompletionList(alloc);
 
     while (true) {
         var buf: [256]u8 = .{0} ** 256;
         const prompt = try std.fmt.bufPrint(&buf, "{s}:{d}> ", .{ host, port });
 
-        const line = linenose.linenoise(prompt.ptr);
+        const line = linenose.linenoise(prompt[0..prompt.len].ptr);
         if (line == null) {
             std.debug.print("\n", .{});
             std.debug.print("GoodBye!\n", .{});
