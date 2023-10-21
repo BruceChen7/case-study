@@ -4,6 +4,7 @@ const req = @import("req.zig");
 const rsp = @import("rsp.zig");
 const linenose = @cImport(@cInclude("linenoise.h"));
 const libc = @cImport(@cInclude("stdlib.h"));
+const history = @import("history.zig");
 const CmdList = std.ArrayList([]const u8);
 
 var cmdCompleteList: CmdList = undefined;
@@ -68,6 +69,7 @@ pub fn main() !void {
 
     linenose.linenoiseSetMultiLine(0);
     linenose.linenoiseSetCompletionCallback(completionCallback);
+    _ = linenose.linenoiseHistoryLoad(@as([:0]const u8, "history.txt"));
     try setupCompletion(alloc);
     defer deinitCompletionList(alloc);
 
@@ -111,5 +113,6 @@ pub fn main() !void {
         if (val.ownedData) {
             val.deinit(alloc);
         }
+        history.saveHistory(input, "history.txt");
     }
 }
