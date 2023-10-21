@@ -16,6 +16,7 @@ pub const CommandType = enum {
     LLEN,
     RPOP,
     RPUSH,
+    LINSERT,
 };
 
 const KV = struct {
@@ -59,11 +60,12 @@ const Command = union(CommandType) {
     LLEN: KV,
     RPOP: KV,
     RPUSH: KV,
+    LINSERT: KV,
 
     pub fn deinit(self: *const Command) void {
         switch (self.*) {
             .Exit => {},
-            .Get, .Incr, .Set, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH => |c| {
+            .Get, .Incr, .Set, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT => |c| {
                 c.deinit();
             },
         }
@@ -71,7 +73,7 @@ const Command = union(CommandType) {
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH => |c| {
+            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
@@ -185,12 +187,14 @@ pub const Request = struct {
         }
         return;
     }
+
     pub fn parse(self: *Request, alloc: std.mem.Allocator) !Command {
         self.content = std.mem.trim(u8, self.content, " ");
 
         var lines = std.mem.tokenizeScalar(u8, self.content, ' ');
         // 遍历lines
         while (lines.next()) |line| {
+            // 能否动态的设置Command的tag，避免出现这么多的重复代码？
             if (std.ascii.eqlIgnoreCase(line, @tagName(.Get))) {
                 const comand = try parseHelper(alloc, &lines, .Get, 1);
                 return Command{ .Get = comand };
@@ -255,10 +259,17 @@ pub const Request = struct {
                 const command = try parseHelper(alloc, &lines, .RPUSH, -1);
                 return Command{ .RPUSH = command };
             }
-
             if (std.ascii.eqlIgnoreCase(line, @tagName(.LRem))) {
                 const command = try parseHelper(alloc, &lines, .LRem, 3);
                 return Command{ .LRem = command };
+            }
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.LINSERT))) {
+                const kv = try parseHelper(alloc, &lines, .LINSERT, 4);
+                const value = kv.value.?;
+                if (!std.ascii.eqlIgnoreCase(value.items[0], "BEFORE") and !std.ascii.eqlIgnoreCase(value.items[0], "AFTER")) {
+                    return RedisClientError.UnknownCommand;
+                }
+                return Command{ .LINSERT = kv };
             }
         }
         return RedisClientError.UnknownCommand;
@@ -275,7 +286,7 @@ test "command tests" {
 }
 
 test "parse" {
-    const req = @import("./req.zig");
+    const req = @import("req.zig");
     var request = req.Request.init("LPUSH d 1 2");
     var command = try request.parse(std.testing.allocator);
     defer command.deinit();

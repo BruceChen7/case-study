@@ -46,7 +46,7 @@ pub const ParsedContent = struct {
             },
             .Integer => |s| {
                 // TODO(ming.chen): try to color integer
-                std.debug.print("(integer){s}\n", .{s});
+                std.debug.print("(integer) {s}\n", .{s});
             },
             .Arrays => |content| {
                 if (content == null) {
