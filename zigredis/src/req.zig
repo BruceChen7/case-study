@@ -16,6 +16,7 @@ pub const CommandType = enum {
     LLEN,
     RPOP,
     RPUSH,
+    LRANGE,
 };
 
 const KV = struct {
@@ -59,11 +60,12 @@ const Command = union(CommandType) {
     LLEN: KV,
     RPOP: KV,
     RPUSH: KV,
+    LRANGE: KV,
 
     pub fn deinit(self: *const Command) void {
         switch (self.*) {
             .Exit => {},
-            .Get, .Incr, .Set, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH => |c| {
+            .Get, .Incr, .Set, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LRANGE => |c| {
                 c.deinit();
             },
         }
@@ -71,7 +73,7 @@ const Command = union(CommandType) {
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH => |c| {
+            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LRANGE => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             else => {
@@ -254,6 +256,11 @@ pub const Request = struct {
             if (std.ascii.eqlIgnoreCase(line, @tagName(.RPUSH))) {
                 const command = try parseHelper(alloc, &lines, .RPUSH, -1);
                 return Command{ .RPUSH = command };
+            }
+
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.LRANGE))) {
+                const command = try parseHelper(alloc, &lines, .LRANGE, 3);
+                return Command{ .LRANGE = command };
             }
 
             if (std.ascii.eqlIgnoreCase(line, @tagName(.LRem))) {
