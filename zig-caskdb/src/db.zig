@@ -19,10 +19,13 @@ const KeyDirEntry = struct {
 pub const DB = struct {
     activeFile: ?std.fs.File,
     allocator: std.mem.Allocator,
-    pub fn init(alloc: std.mem.Allocator, dbPath: []const u8) !DB {
-        var allocator = alloc;
-        const path = try std.fs.realpathAlloc(allocator, dbPath);
-        defer allocator.free(path);
+    pub fn init(alloc: std.mem.Allocator) !DB {
+        var dir = try std.process.getCwdAlloc(alloc);
+        defer alloc.free(dir);
+        const path = try std.fmt.allocPrint(alloc, "{s}/cask.db", .{dir});
+        defer alloc.free(path);
+        std.debug.print("db path: {s}\n", .{path});
+
         const activeFile = std.fs.openFileAbsolute(path, .{ .mode = .read_write }) catch |err| {
             if (err == error.FileNotFound) {
                 // TODO(ming.chen): excluesive file
