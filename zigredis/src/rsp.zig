@@ -171,3 +171,27 @@ pub const Resp = struct {
         return RedisRspError.InvalidResp;
     }
 };
+
+test "resp parse" {
+    // create a string
+    const data = "+OK\r\n";
+    var buf = data[0..data.len];
+    var resp = Resp.init(buf);
+    var res = try resp.parse(
+        std.testing.allocator,
+    );
+    defer res.deinit(std.testing.allocator);
+    try std.testing.expectEqual(res.ownedData, true);
+    try std.testing.expectEqualDeep(res.data.SimpleString, "\"OK\"");
+
+    // create a integer
+    const data2 = ":123\r\n";
+    var buf2 = data2[0..data2.len];
+    var resp2 = Resp.init(buf2);
+    var res2 = try resp2.parse(
+        std.testing.allocator,
+    );
+    defer res2.deinit(std.testing.allocator);
+    try std.testing.expectEqual(res2.ownedData, false);
+    try std.testing.expectEqualDeep(res2.data.Integer, "123");
+}
