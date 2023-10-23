@@ -2,10 +2,10 @@ name: Works with Zig 0.11.0
 on:
   push:
     branches:
-    - master
+    - main
   pull_request:
     branches:
-    - master
+    - main
   workflow_dispatch:
 jobs:
   build-zigredis:
