@@ -8,6 +8,7 @@ const RspType = enum {
     SimpleString,
     SimpleErrors,
     BulkString,
+    Doubles,
     Arrays,
     Integer,
 };
@@ -18,6 +19,7 @@ const RspData = union(RspType) {
     BulkString: []const u8,
     Arrays: ?[][]const u8,
     Integer: []const u8,
+    Doubles: []const u8,
 };
 
 pub const ParsedContent = struct {
@@ -27,7 +29,7 @@ pub const ParsedContent = struct {
     pub fn deinit(self: *ParsedContent, alloc: std.mem.Allocator) void {
         if (self.ownedData) {
             switch (self.data) {
-                .SimpleString, .SimpleErrors, .BulkString, .Integer => |s| {
+                .SimpleString, .SimpleErrors, .BulkString, .Integer, .Doubles => |s| {
                     alloc.free(s);
                 },
                 .Arrays => |s| {
@@ -41,7 +43,7 @@ pub const ParsedContent = struct {
     }
     pub fn print(self: *ParsedContent) void {
         switch (self.data) {
-            .SimpleString, .SimpleErrors, .BulkString => |s| {
+            .SimpleString, .SimpleErrors, .BulkString, .Doubles => |s| {
                 std.debug.print("{s}\n", .{s});
             },
             .Integer => |s| {
@@ -101,6 +103,9 @@ pub const Resp = struct {
             //  TODO(ming.chen): need to parse it as integer
             if (std.mem.eql(u8, line[0..1], ":")) {
                 return .{ .data = .{ .Integer = line[1..] }, .ownedData = false };
+            }
+            if (std.mem.eql(u8, line[0..1], ",")) {
+                return .{ .data = .{ .Doubles = line[1..] }, .ownedData = false };
             }
             if (std.mem.eql(u8, line[0..1], "$")) {
                 var buf = line[1..];
