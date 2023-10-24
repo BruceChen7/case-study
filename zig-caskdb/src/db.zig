@@ -1,54 +1,34 @@
 const std = @import("std");
+const option = @import("option.zig");
+const disk = @import("disk.zig");
 
-const DiskEntry = struct {
-    crc: []const u8,
-    ts: u32,
-    keySize: u32,
-    valueSize: u32,
-    key: []const u8,
-    value: []const u8,
-};
-
-const KeyDirEntry = struct {
-    fileID: u32,
-    valueSize: u32,
-    valuePos: u32,
-    ts: u32,
-};
-
+const ArchiveFileList = std.ArrayList([]disk.File);
 pub const DB = struct {
-    activeFile: ?std.fs.File,
     allocator: std.mem.Allocator,
-    pub fn init(alloc: std.mem.Allocator) !DB {
-        var dir = try std.process.getCwdAlloc(alloc);
-        defer alloc.free(dir);
-        const path = try std.fmt.allocPrint(alloc, "{s}/cask.db", .{dir});
-        defer alloc.free(path);
-        std.debug.print("db path: {s}\n", .{path});
+    activeFile: ?disk.File,
+    archiveFile: ArchiveFileList,
+    mergeFile: ?disk.File,
 
-        const activeFile = std.fs.openFileAbsolute(path, .{ .mode = .read_write }) catch |err| {
-            if (err == error.FileNotFound) {
-                // TODO(ming.chen): excluesive file
-                var activeFile = try std.fs.createFileAbsolute(path, .{});
-                return DB{
-                    .activeFile = activeFile,
-                    .allocator = alloc,
-                };
-            }
-            return err;
-        };
+    pub fn init(alloc: std.mem.Allocator, o: ?*option.Option) !DB {
+        _ = o;
         return DB{
-            .activeFile = activeFile,
             .allocator = alloc,
+            .activeFile = null,
+            .archiveFile = ArchiveFileList.init(alloc),
+            .mergeFile = null,
         };
     }
 
     pub fn deinit(
         self: *DB,
     ) void {
-        if (self.activeFile) |file| {
-            file.close();
-        }
+        self.archiveFile.deinit();
+    }
+
+    pub fn open(
+        self: *DB,
+    ) !void {
+        _ = self;
     }
 
     pub fn store(self: *DB, key: []const u8, value: []const u8) !void {
