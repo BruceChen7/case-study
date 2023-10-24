@@ -56,7 +56,11 @@ pub const ParsedContent = struct {
                     return;
                 }
                 for (content.?, 0..) |c, i| {
-                    std.debug.print("{d}) \"{s}\"\n", .{ i + 1, c });
+                    if (std.mem.eql(u8, c, "(nil)")) {
+                        std.debug.print("{d}) {s}\n", .{ i + 1, c });
+                    } else {
+                        std.debug.print("{d}) \"{s}\"\n", .{ i + 1, c });
+                    }
                 }
             },
         }
@@ -78,7 +82,8 @@ pub const Resp = struct {
         if (buf[0] != '$') {
             return RedisRspError.InvalidResp;
         }
-        const rsp_len = std.fmt.parseInt(i32, buf[1..], 10) catch {
+        const rsp_len = std.fmt.parseInt(i32, buf[1..], 10) catch |err| {
+            std.debug.print("err: {s}\n", .{@errorName(err)});
             return RedisRspError.InvalidResp;
         };
         return rsp_len;
@@ -150,6 +155,13 @@ pub const Resp = struct {
 
                 while (i < array_len) : (i += 1) {
                     const length = if (lines.next()) |l| parseLength(l) catch -1 else -2;
+                    if (length == -1) {
+                        var val = try alloc.alloc(u8, 5);
+                        errdefer alloc.free(val);
+                        std.mem.copy(u8, val, "(nil)");
+                        res[i] = val;
+                        continue;
+                    }
                     if (length < 0) {
                         return RedisRspError.InvalidResp;
                     }

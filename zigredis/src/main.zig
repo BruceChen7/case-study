@@ -109,6 +109,7 @@ pub fn main() !void {
         var actRsp = rsp_buf[0..rsp_size];
         var response = rsp.Resp.init(actRsp);
         var val = try response.parse(alloc);
+
         val.print();
         if (val.ownedData) {
             val.deinit(alloc);

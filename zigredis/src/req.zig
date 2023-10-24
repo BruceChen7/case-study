@@ -19,6 +19,8 @@ pub const CommandType = enum {
     LINSERT,
     LRANGE,
     EXISTS,
+    GETSET,
+    MGET,
 };
 
 const KV = struct {
@@ -65,11 +67,16 @@ const Command = union(CommandType) {
     LINSERT: KV,
     LRANGE: KV,
     EXISTS: KV,
+    GETSET: KV,
+    MGET: KV,
 
     pub fn deinit(self: *const Command) void {
         switch (self.*) {
             .Exit => {},
-            .Get, .Incr, .Set, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT, .LRANGE => |c| {
+            .Get, .GETSET, .Set, .MGET => |c| {
+                c.deinit();
+            },
+            .Incr, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT, .LRANGE => |c| {
                 c.deinit();
             },
             .EXISTS => |c| {
@@ -80,7 +87,10 @@ const Command = union(CommandType) {
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get, .Set, .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT, .LRANGE => |c| {
+            .Get, .Set, .GETSET, .MGET => |c| {
+                return Command.serializeHelper(alloc, c);
+            },
+            .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT, .LRANGE => |c| {
                 return Command.serializeHelper(alloc, c);
             },
             .EXISTS => |c| {
@@ -208,6 +218,16 @@ pub const Request = struct {
             if (std.ascii.eqlIgnoreCase(line, @tagName(.Get))) {
                 const comand = try parseHelper(alloc, &lines, .Get, 1);
                 return Command{ .Get = comand };
+            }
+
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.GETSET))) {
+                const comand = try parseHelper(alloc, &lines, .GETSET, 2);
+                return Command{ .GETSET = comand };
+            }
+
+            if (std.ascii.eqlIgnoreCase(line, @tagName(.MGET))) {
+                const comand = try parseHelper(alloc, &lines, .MGET, -1);
+                return Command{ .MGET = comand };
             }
             if (std.ascii.eqlIgnoreCase(line, @tagName(.Incr))) {
                 const command = try parseHelper(alloc, &lines, .Incr, 1);
