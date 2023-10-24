@@ -37,6 +37,7 @@ pub const ParsedContent = struct {
                     while (i < s.?.len) : (i += 1) {
                         alloc.free(s.?[i]);
                     }
+                    alloc.free(s.?);
                 },
             }
         }
@@ -56,8 +57,8 @@ pub const ParsedContent = struct {
                     return;
                 }
                 for (content.?, 0..) |c, i| {
-                    if (std.mem.eql(u8, c, "(nil)")) {
-                        std.debug.print("{d}) {s}\n", .{ i + 1, c });
+                    if (std.mem.eql(u8, c, "nil")) {
+                        std.debug.print("{d}) ({s})\n", .{ i + 1, c });
                     } else {
                         std.debug.print("{d}) \"{s}\"\n", .{ i + 1, c });
                     }
@@ -150,15 +151,21 @@ pub const Resp = struct {
                     return .{ .data = .{ .Arrays = null }, .ownedData = false };
                 }
                 var res = try alloc.alloc([]const u8, @intCast(array_len));
+                var numAllocated: u32 = 0;
+                errdefer for (0..numAllocated) |i| {
+                    alloc.free(res[i]);
+                };
                 errdefer alloc.free(res);
-                var i: u32 = 0;
 
+                var i: u32 = 0;
+                // TODO(ming.chen): 这里的可能的内存泄漏
                 while (i < array_len) : (i += 1) {
                     const length = if (lines.next()) |l| parseLength(l) catch -1 else -2;
                     if (length == -1) {
-                        var val = try alloc.alloc(u8, 5);
+                        var val = try alloc.alloc(u8, 3);
                         errdefer alloc.free(val);
-                        std.mem.copy(u8, val, "(nil)");
+                        std.mem.copy(u8, val, "nil");
+                        numAllocated += 1;
                         res[i] = val;
                         continue;
                     }
@@ -172,6 +179,7 @@ pub const Resp = struct {
                         var val = try alloc.alloc(u8, @intCast(length));
                         errdefer alloc.free(val);
                         @memcpy(val, l[0..@intCast(length)]);
+                        numAllocated += 1;
                         res[i] = val;
                     } else {
                         return RedisRspError.InvalidResp;
@@ -206,4 +214,19 @@ test "resp parse" {
     defer res2.deinit(std.testing.allocator);
     try std.testing.expectEqual(res2.ownedData, false);
     try std.testing.expectEqualDeep(res2.data.Integer, "123");
+
+    // array string
+    const data3 = "*3\r\n$3\r\nfoo\r\n$3\r\nbar\r\n$-1\r\n";
+    var buf3 = data3[0..data3.len];
+    var resp3 = Resp.init(buf3);
+    var res3 = try resp3.parse(
+        std.testing.allocator,
+    );
+    defer res3.deinit(std.testing.allocator);
+    try std.testing.expectEqual(res3.ownedData, true);
+    const arrayRes = res3.data.Arrays.?;
+    try std.testing.expectEqual(arrayRes.len, 3);
+    try std.testing.expectEqualDeep(arrayRes[0], "foo");
+    try std.testing.expectEqualDeep(arrayRes[1], "bar");
+    try std.testing.expectEqualDeep(arrayRes[2], "nil");
 }
