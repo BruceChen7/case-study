@@ -73,13 +73,7 @@ const Command = union(CommandType) {
     pub fn deinit(self: *const Command) void {
         switch (self.*) {
             .Exit => {},
-            .Get, .GETSET, .Set, .MGET => |c| {
-                c.deinit();
-            },
-            .Incr, .Auth, .Ping, .DEL, .LPUSH, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT, .LRANGE => |c| {
-                c.deinit();
-            },
-            .EXISTS => |c| {
+            inline else => |c| {
                 c.deinit();
             },
         }
@@ -87,17 +81,9 @@ const Command = union(CommandType) {
 
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
-            .Get, .Set, .GETSET, .MGET => |c| {
+            .Exit => unreachable,
+            inline else => |c| {
                 return Command.serializeHelper(alloc, c);
-            },
-            .Auth, .Ping, .DEL, .LPUSH, .Incr, .LPOP, .Select, .LTrim, .LRem, .LLEN, .RPOP, .RPUSH, .LINSERT, .LRANGE => |c| {
-                return Command.serializeHelper(alloc, c);
-            },
-            .EXISTS => |c| {
-                return Command.serializeHelper(alloc, c);
-            },
-            else => {
-                return RedisClientError.UnknownCommand;
             },
         }
     }
