@@ -82,12 +82,12 @@ const Command = union(CommandType) {
     pub fn serialize(self: *const Command, alloc: std.mem.Allocator) !SerializeReqRes {
         switch (self.*) {
             .Exit => unreachable,
-            inline else => |c| {
+            inline else => |*c| {
                 return Command.serializeHelper(alloc, c);
             },
         }
     }
-    fn serializeHelper(alloc: std.mem.Allocator, command: KV) !SerializeReqRes {
+    fn serializeHelper(alloc: std.mem.Allocator, command: *const KV) !SerializeReqRes {
         const buf = try alloc.alloc(u8, 2048);
         errdefer alloc.free(buf);
 
