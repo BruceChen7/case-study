@@ -7,5 +7,7 @@ zig-cache/
 
 # MacOS Cache
 .DS_Store
+.merge
+.segment
 
 
