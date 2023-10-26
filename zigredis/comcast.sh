@@ -20,9 +20,10 @@ else
     exit 1
 fi
 
-# if arg num is not 3, print usage
-if [[ $# -ne 3 ]]; then
-    echo "usage: comcast.sh start <device> <latency> <packet-loss>"
+# if arg num is not 3 or 2, print usage
+echo $#
+if [[ $# -ne 4 && $# -ne 1 ]]; then
+    echo "usage: comcast.sh start <device> <latency> <packet-loss>  | comcast.sh stop"
     exit 1
 fi
 
@@ -38,16 +39,16 @@ if [[ "$1" != "start" ]]; then
     exit 1
 fi
 
-
 device=$2
 latency=$3
 packet_loss=$4
 
 if [[ "$system" == "linux" ]]; then
     # $ comcast --device=eth0 --latency=250 --target-bw=1000 --default-bw=1000000 --packet-loss=10% --target-addr=8.8.8.8,10.0.0.0/24 --target-proto=tcp,udp,icmp --target-port=80,22,1000:2000
-    comcast --device=$1 --latency=$2 --target-bw=1000000 --default-bw=1000000 --packet-loss=$3% --target-addr=127.0.0.1 --target-proto=tcp --target-port=6379
+    comcast --device=${device} --latency=${latency} --target-bw=1000000 --default-bw=1000000 --packet-loss=${packet_loss}% --target-addr=127.0.0.1 --target-proto=tcp --target-port=6379
 else
     # not support ip port
-    comcast --device=$1 --latency=$2 --target-bw=1000 --packet-loss=$3%
+    # in mac, latency means src -> dst latency, not rtt time
+    comcast --device=${device} --latency=${latency} --target-bw=1000 --packet-loss=${packet_loss}%
 fi
 
