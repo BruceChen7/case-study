@@ -53,8 +53,6 @@ pub const Client = struct {
     pub fn read(self: *Client, buf: []u8) !usize {
         var cnt: usize = 0;
         retry: for (0..3) |_| {
-            std.debug.print("i = {d}\n", .{i});
-            var now = std.time.milliTimestamp();
             cnt = self.stream.?.read(buf) catch |err| {
                 // 只重试3次
                 if (err == std.os.ReadError.WouldBlock) {
