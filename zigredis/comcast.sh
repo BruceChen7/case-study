@@ -21,7 +21,6 @@ else
 fi
 
 # if arg num is not 3 or 2, print usage
-echo $#
 if [[ $# -ne 4 && $# -ne 1 ]]; then
     echo "usage: comcast.sh start <device> <latency> <packet-loss>  | comcast.sh stop"
     exit 1
