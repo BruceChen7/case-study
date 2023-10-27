@@ -8,10 +8,13 @@ pub const Dir = struct {
     }
 
     pub fn getSpecificExtFile(self: *const Dir, ext: []const u8, alloc: std.mem.Allocator) !std.ArrayList([]u8) {
+        var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+        var curPath = try self.dir.realpath(".", &buf);
         // iterate all files
-        var src_dir = try self.dir.openIterableDir("", .{});
+        var src_dir = try self.dir.openIterableDir(curPath, .{});
         defer src_dir.close();
         var it = try src_dir.walk(alloc);
+        defer it.deinit();
         var res = std.ArrayList([]u8).init(alloc);
         var numAlloc: u32 = 0;
         errdefer for (0..numAlloc) |i| {
@@ -23,12 +26,12 @@ pub const Dir = struct {
             if (!std.mem.endsWith(u8, entry.path, ext)) {
                 continue :next_entry;
             }
-            // 如果是目录，skip
-            var dirPath: []u8 = try alloc.alloc(u8, std.fs.MAX_PATH_BYTES);
-            const buf = try self.dir.realpath("", dirPath);
-            const src_sub_path = try std.fs.path.join(alloc, &.{ buf, entry.path });
-            numAlloc += 1;
+            if (entry.kind != .file) {
+                continue :next_entry;
+            }
+            const src_sub_path = try std.fs.path.join(alloc, &.{ curPath, entry.path });
             try res.append(src_sub_path);
+            numAlloc += 1;
         }
         return res;
     }
@@ -44,6 +47,7 @@ test "get specific ext file" {
     const fileName = try std.fmt.allocPrint(std.testing.allocator, "{d}{s}", .{ 1, opt.mergefileExt });
     defer std.testing.allocator.free(fileName);
     try std.testing.expectEqualSlices(u8, "1.merge", fileName);
+
     var file = try dir.createFile(fileName, .{});
     // delete file
     defer file.close();
@@ -51,5 +55,18 @@ test "get specific ext file" {
 
     const curDir = Dir.init(dir);
     const fileList = curDir.getSpecificExtFile(opt.mergefileExt, std.testing.allocator) catch unreachable;
-    _ = fileList;
+    errdefer for (fileList.items) |f| {
+        std.testing.allocator.free(f);
+    };
+    errdefer fileList.deinit();
+
+    for (fileList.items) |f| {
+        var name = try std.fs.path.join(std.testing.allocator, &.{ dirPath, "1.merge" });
+        defer std.testing.allocator.free(name);
+        try std.testing.expectEqualSlices(u8, name, f);
+    }
+    for (fileList.items) |f| {
+        std.testing.allocator.free(f);
+    }
+    fileList.deinit();
 }
