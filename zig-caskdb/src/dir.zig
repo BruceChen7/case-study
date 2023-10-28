@@ -30,7 +30,8 @@ pub const Dir = struct {
                 continue :next_entry;
             }
             const src_sub_path = try std.fs.path.join(alloc, &.{ curPath, entry.path });
-            try res.append(src_sub_path);
+            std.debug.print("src_sub_path: {s}\n", .{src_sub_path});
+            try res.append(src_sub_path[0..src_sub_path.len]);
             numAlloc += 1;
         }
         return res;
@@ -55,10 +56,10 @@ test "get specific ext file" {
 
     const curDir = Dir.init(dir);
     const fileList = curDir.getSpecificExtFile(opt.mergefileExt, std.testing.allocator) catch unreachable;
+    errdefer fileList.deinit();
     errdefer for (fileList.items) |f| {
         std.testing.allocator.free(f);
     };
-    errdefer fileList.deinit();
 
     for (fileList.items) |f| {
         var name = try std.fs.path.join(std.testing.allocator, &.{ dirPath, "1.merge" });
