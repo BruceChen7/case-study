@@ -4,6 +4,26 @@ pub const FileEntry = struct {
     valueSize: u32,
     key: []const u8,
     value: []const u8,
+    // deep copy
+    pub fn dup(self: *const FileEntry, alloc: std.mem.Allocator) !FileEntry {
+        std.debug.assert(self.key.len == self.keySize);
+        std.debug.assert(self.value.len == self.valueSize);
+        const key = try alloc.alloc(u8, self.keySize);
+        const value = try alloc.alloc(u8, self.valueSize);
+        std.mem.copy(u8, key, self.key);
+        std.mem.copy(u8, value, self.value);
+        return .{
+            .keySize = self.keySize,
+            .valueSize = self.valueSize,
+            .key = key,
+            .value = value,
+        };
+    }
+
+    pub fn deinit(self: *FileEntry, alloc: std.mem.Allocator) void {
+        alloc.free(self.key);
+        alloc.free(self.value);
+    }
 
     pub fn serialize(self: *const FileEntry) []const u8 {
         _ = self;
@@ -84,6 +104,11 @@ pub const CaskFile = struct {
         if (self.file) |f| {
             const pos: i64 = @intCast(try f.getEndPos());
             try f.seekFromEnd(pos);
+        }
+    }
+    pub fn write(self: *CaskFile, data: []const u8) !void {
+        if (self.file) |f| {
+            try f.writeAll(data);
         }
     }
 

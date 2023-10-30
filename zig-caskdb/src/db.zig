@@ -4,7 +4,7 @@ const disk = @import("disk.zig");
 const directory = @import("dir.zig");
 
 const ArchiveFileList = std.ArrayList(disk.CaskFile);
-const Index = std.StringHashMap(*const disk.FileEntry);
+const Index = std.StringHashMap(*disk.FileEntry);
 pub const DB = struct {
     allocator: std.mem.Allocator,
     activeFile: ?disk.CaskFile,
@@ -44,6 +44,11 @@ pub const DB = struct {
         self.allocator.destroy(self.options);
         if (self.activeFile) |*file| {
             file.deinit();
+        }
+        // iterate index
+        var it = self.index.iterator();
+        while (it.next()) |entry| {
+            entry.value_ptr.*.deinit(self.allocator);
         }
         self.index.deinit();
     }
@@ -115,14 +120,15 @@ pub const DB = struct {
             .value = value,
         };
         const res = entry.serialize();
-        _ = res;
+        try self.activeFile.?.write(res);
         try self.updateIndex(key, &entry);
     }
 
     fn updateIndex(self: *DB, key: []const u8, val: *const disk.FileEntry) !void {
+        var copy = try val.dup(self.allocator);
         self.mutex.lock();
         defer self.mutex.unlock();
-        try self.index.put(key, val);
+        try self.index.put(key, &copy);
     }
 
     pub fn load(self: *DB, key: []const u8) !void {
