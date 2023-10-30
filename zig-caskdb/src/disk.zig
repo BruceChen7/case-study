@@ -1,5 +1,5 @@
 const std = @import("std");
-const FileEntry = struct {
+pub const FileEntry = struct {
     keySize: u32,
     valueSize: u32,
     key: []const u8,
@@ -7,6 +7,7 @@ const FileEntry = struct {
 
     pub fn serialize(self: *const FileEntry) []const u8 {
         _ = self;
+        return "";
         // const len = 4 + 4 + self.keySize + self.valueSize;
         // var fbs = std.io.BufferedWriter(len, u8);
         // const writer = fbs.writer();

@@ -4,6 +4,7 @@ const disk = @import("disk.zig");
 const directory = @import("dir.zig");
 
 const ArchiveFileList = std.ArrayList(disk.CaskFile);
+const Index = std.StringHashMap(*const disk.FileEntry);
 pub const DB = struct {
     allocator: std.mem.Allocator,
     activeFile: ?disk.CaskFile,
@@ -11,6 +12,8 @@ pub const DB = struct {
     mergeFile: ?disk.CaskFile,
     options: *option.Option,
     pendingWring: []const u8,
+    mutex: std.Thread.Mutex,
+    index: Index,
 
     pub fn init(alloc: std.mem.Allocator, dbOption: ?*const option.Option) !DB {
         var op: *option.Option = try alloc.create(option.Option);
@@ -26,6 +29,8 @@ pub const DB = struct {
             .mergeFile = null,
             .options = op,
             .pendingWring = &[_]u8{},
+            .index = Index.init(alloc),
+            .mutex = std.Thread.Mutex{},
         };
     }
 
@@ -40,6 +45,7 @@ pub const DB = struct {
         if (self.activeFile) |*file| {
             file.deinit();
         }
+        self.index.deinit();
     }
 
     pub fn open(
@@ -71,6 +77,13 @@ pub const DB = struct {
 
             try self.openSegmentFileList(segmentFileList);
         }
+        try self.buildIndex();
+    }
+
+    fn buildIndex(self: *DB) void {
+        for (self.archiveFile.items) |*file| {
+            try file.buildIndex();
+        }
     }
 
     fn openSegmentFileList(self: *DB, fileList: std.ArrayList([]u8)) !void {
@@ -96,17 +109,20 @@ pub const DB = struct {
 
     pub fn store(self: *DB, key: []const u8, value: []const u8) !void {
         const entry: disk.FileEntry = .{
-            .keySize = key.len,
-            .valueSize = value.len,
-            .key = std.mem.dup(u8, key),
-            .value = std.mem.dup(u8, value),
+            .keySize = @intCast(key.len),
+            .valueSize = @intCast(value.len),
+            .key = key,
+            .value = value,
         };
-        entry.serialize();
-        self.update();
+        const res = entry.serialize();
+        _ = res;
+        try self.updateIndex(key, &entry);
     }
 
-    fn updateIndex(self: *DB) void {
-        _ = self;
+    fn updateIndex(self: *DB, key: []const u8, val: *const disk.FileEntry) !void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        try self.index.put(key, val);
     }
 
     pub fn load(self: *DB, key: []const u8) !void {
