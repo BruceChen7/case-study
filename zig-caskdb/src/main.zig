@@ -6,7 +6,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     var alloc = gpa.allocator();
     var caskDB = try db.DB.init(alloc, null);
-    defer caskDB.deinit();
+    defer caskDB.close();
     try caskDB.store("foo", "bar");
     try caskDB.load("foo");
 }

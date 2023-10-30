@@ -45,7 +45,8 @@ pub const DB = struct {
     pub fn open(
         self: *DB,
     ) !void {
-        const dir = directory.Dir.init(self.options.mergeFileDir);
+        // TODO(ming.chen): use another option
+        const dir = directory.Dir.init(self.options.segmentFileDir);
         var segmentFileList = try dir.getSpecificExtFile(self.options.segmentFileExt, self.allocator);
 
         defer segmentFileList.deinit();
@@ -61,10 +62,6 @@ pub const DB = struct {
             try self.activeFile.?.open();
             try self.activeFile.?.seekLast();
         } else {
-            for (segmentFileList.items, 0..) |f, i| {
-                _ = i;
-                std.debug.print("name: {s}\n", .{f});
-            }
             // 按照文件名来排序
             std.sort.block([]u8, segmentFileList.items, {}, struct {
                 fn lessThan(_: void, a: []const u8, b: []const u8) bool {
@@ -72,11 +69,6 @@ pub const DB = struct {
                 }
             }.lessThan);
 
-            for (segmentFileList.items, 0..) |f, i| {
-                _ = i;
-                std.debug.print("name: {s}\n", .{f});
-            }
-            // 文件名称
             try self.openSegmentFileList(segmentFileList);
         }
     }
@@ -103,8 +95,17 @@ pub const DB = struct {
     }
 
     pub fn store(self: *DB, key: []const u8, value: []const u8) !void {
-        _ = value;
-        _ = key;
+        const entry: disk.FileEntry = .{
+            .keySize = key.len,
+            .valueSize = value.len,
+            .key = std.mem.dup(u8, key),
+            .value = std.mem.dup(u8, value),
+        };
+        entry.serialize();
+        self.update();
+    }
+
+    fn updateIndex(self: *DB) void {
         _ = self;
     }
 

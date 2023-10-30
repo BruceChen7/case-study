@@ -17,10 +17,10 @@ pub const Dir = struct {
         defer it.deinit();
         var res = std.ArrayList([]u8).init(alloc);
         var numAlloc: u32 = 0;
+        errdefer res.deinit();
         errdefer for (0..numAlloc) |i| {
             alloc.free(res.items[i]);
         };
-        errdefer res.deinit();
 
         next_entry: while (try it.next()) |entry| {
             if (!std.mem.endsWith(u8, entry.path, ext)) {
