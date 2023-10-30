@@ -45,9 +45,9 @@ test "get specific ext file" {
     defer std.testing.allocator.free(dirPath);
     // create file
     var opt = option.default();
-    const fileName = try std.fmt.allocPrint(std.testing.allocator, "{d}{s}", .{ 1, opt.mergefileExt });
+    const fileName = try std.fmt.allocPrint(std.testing.allocator, "{d}{s}", .{ 2, opt.mergefileExt });
     defer std.testing.allocator.free(fileName);
-    try std.testing.expectEqualSlices(u8, "1.merge", fileName);
+    try std.testing.expectEqualSlices(u8, "2.merge", fileName);
 
     var file = try dir.createFile(fileName, .{});
     // delete file
@@ -62,7 +62,7 @@ test "get specific ext file" {
     };
 
     for (fileList.items) |f| {
-        var name = try std.fs.path.join(std.testing.allocator, &.{ dirPath, "1.merge" });
+        var name = try std.fs.path.join(std.testing.allocator, &.{ dirPath, "2.merge" });
         defer std.testing.allocator.free(name);
         try std.testing.expectEqualSlices(u8, name, f);
     }

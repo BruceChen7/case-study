@@ -77,6 +77,7 @@ pub const CaskFile = struct {
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
         var subPath = try std.fmt.bufPrint(&buf, "{d}{s}", .{ fileID, ext });
         var name = try std.fs.path.join(alloc, &.{ dirPath, subPath });
+        std.debug.assert(std.fs.path.isAbsolute(name));
         return .{
             .alloc = alloc,
             .fileID = fileID,
@@ -98,6 +99,7 @@ pub const CaskFile = struct {
         if (self.file) |f| {
             f.close();
         }
+        std.debug.print("{s}", .{self.path});
         self.file = try std.fs.openFileAbsolute(self.path, .{ .mode = .read_write });
     }
     pub fn seekLast(self: *CaskFile) !void {

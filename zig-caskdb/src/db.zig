@@ -85,9 +85,10 @@ pub const DB = struct {
         try self.buildIndex();
     }
 
-    fn buildIndex(self: *DB) void {
+    fn buildIndex(self: *DB) !void {
         for (self.archiveFile.items) |*file| {
-            try file.buildIndex();
+            _ = file;
+            // try file.buildIndex();
         }
     }
 
@@ -102,6 +103,7 @@ pub const DB = struct {
             // convert fileIDStr to u32
             const fileID = try std.fmt.parseInt(u32, fileIDStr, 10);
             var file = try disk.CaskFile.init(alloc, fileID, .SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
+            errdefer file.deinit();
             try file.open();
             if (i == fileList.items.len - 1) {
                 self.activeFile = file;
