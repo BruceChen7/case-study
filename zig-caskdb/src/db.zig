@@ -138,9 +138,15 @@ pub const DB = struct {
         try self.index.put(key, keyDir.*);
     }
 
-    pub fn load(self: *DB, key: []const u8) !void {
-        _ = key;
-        _ = self;
+    pub fn load(self: *DB, key: []const u8) ![]const u8 {
+        self.mutex.lock();
+        defer self.mutex.unlock();
+        var it = self.index.get(key);
+        if (it) |entry| {
+            const val = try self.activeFile.?.seekPosAndRead(self.allocator, entry.valuePos, entry.valueSize);
+            return val;
+        }
+        return disk.ErrorDB.NotFound;
     }
 };
 

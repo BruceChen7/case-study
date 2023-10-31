@@ -48,6 +48,10 @@ pub const FileType = enum {
     MERGE,
 };
 
+pub const ErrorDB = error{
+    NotFound,
+};
+
 pub const CaskFile = struct {
     fileID: u32,
     fileType: FileType,
@@ -93,6 +97,17 @@ pub const CaskFile = struct {
             self.lastPos = pos;
             try f.seekFromEnd(pos);
         }
+    }
+
+    pub fn seekPosAndRead(self: *CaskFile, alloc: std.mem.Allocator, pos: i64, nBytes: u32) ![]u8 {
+        if (self.file) |f| {
+            try f.seekTo(@intCast(pos));
+            var buf: []u8 = try alloc.alloc(u8, nBytes);
+            const nSize = try f.readAll(buf);
+            std.debug.assert(nSize == nBytes);
+            return buf;
+        }
+        return ErrorDB.NotFound;
     }
 
     pub fn getLastWrittenPos(self: *const CaskFile) i64 {
