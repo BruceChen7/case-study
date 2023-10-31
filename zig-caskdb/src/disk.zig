@@ -4,37 +4,15 @@ pub const FileEntry = struct {
     valueSize: u32,
     key: []const u8,
     value: []const u8,
-    // deep copy
-    pub fn dup(self: *const FileEntry, alloc: std.mem.Allocator) !FileEntry {
-        std.debug.assert(self.key.len == self.keySize);
-        std.debug.assert(self.value.len == self.valueSize);
-        const key = try alloc.alloc(u8, self.keySize);
-        const value = try alloc.alloc(u8, self.valueSize);
-        std.mem.copy(u8, key, self.key);
-        std.mem.copy(u8, value, self.value);
-        return .{
-            .keySize = self.keySize,
-            .valueSize = self.valueSize,
-            .key = key,
-            .value = value,
-        };
-    }
-
-    pub fn deinit(self: *FileEntry, alloc: std.mem.Allocator) void {
-        alloc.free(self.key);
-        alloc.free(self.value);
-    }
 
     pub fn serialize(self: *const FileEntry) []const u8 {
-        _ = self;
-        return "";
-        // const len = 4 + 4 + self.keySize + self.valueSize;
-        // var fbs = std.io.BufferedWriter(len, u8);
-        // const writer = fbs.writer();
-        // try writer.writeIntLittle(u32, self.keySize);
-        // try writer.writeIntLittle(u32, self.valueSize);
-        // try writer.writeAll(self.key);
-        // try writer.writeAll(self.value);
+        const len = 4 + 4 + self.keySize + self.valueSize;
+        var fbs = std.io.BufferedWriter(len, u8);
+        const writer = fbs.writer();
+        try writer.writeIntLittle(u32, self.keySize);
+        try writer.writeIntLittle(u32, self.valueSize);
+        try writer.writeAll(self.key);
+        try writer.writeAll(self.value);
     }
     pub fn deserialize(self: *FileEntry, data: []const u8) void {
         _ = data;
@@ -47,7 +25,7 @@ pub const FileEntry = struct {
     }
 };
 
-const KeyDirEntry = struct {
+pub const KeyDirEntry = struct {
     fileID: u32,
     valueSize: u32,
     valuePos: u32,
@@ -70,6 +48,7 @@ pub const CaskFile = struct {
     path: []const u8,
     alloc: std.mem.Allocator,
     file: ?std.fs.File,
+    lastPos: i64 = 0,
 
     pub fn init(alloc: std.mem.Allocator, fileID: u32, fileType: FileType, ext: []const u8, dir: std.fs.Dir) !CaskFile {
         var dirPath = try dir.realpathAlloc(alloc, ".");
@@ -84,6 +63,7 @@ pub const CaskFile = struct {
             .fileType = fileType,
             .path = name,
             .file = null,
+            .lastPos = 0,
         };
     }
     pub fn create(alloc: std.mem.Allocator, fileID: u32, fileType: FileType, ext: []const u8, dir: std.fs.Dir) !CaskFile {
@@ -104,12 +84,21 @@ pub const CaskFile = struct {
     pub fn seekLast(self: *CaskFile) !void {
         if (self.file) |f| {
             const pos: i64 = @intCast(try f.getEndPos());
+            self.lastPos = pos;
             try f.seekFromEnd(pos);
         }
     }
+
+    pub fn getLastWrittenPos(self: *const CaskFile) i64 {
+        return self.lastPos;
+    }
+
     pub fn write(self: *CaskFile, data: []const u8) !void {
+        // TODO(ming.chen): use buffer write
+        // var buff_out = std.io.bufferedWriter(config_file.writer());
         if (self.file) |f| {
             try f.writeAll(data);
+            self.lastPos += @intCast(data.len);
         }
     }
 

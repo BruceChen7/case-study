@@ -4,7 +4,7 @@ const disk = @import("disk.zig");
 const directory = @import("dir.zig");
 
 const ArchiveFileList = std.ArrayList(disk.CaskFile);
-const Index = std.StringHashMap(*disk.FileEntry);
+const Index = std.StringHashMap(disk.KeyDirEntry);
 pub const DB = struct {
     allocator: std.mem.Allocator,
     activeFile: ?disk.CaskFile,
@@ -44,11 +44,6 @@ pub const DB = struct {
         self.allocator.destroy(self.options);
         if (self.activeFile) |*file| {
             file.deinit();
-        }
-        // iterate index
-        var it = self.index.iterator();
-        while (it.next()) |entry| {
-            entry.value_ptr.*.deinit(self.allocator);
         }
         self.index.deinit();
     }
@@ -105,6 +100,7 @@ pub const DB = struct {
             var file = try disk.CaskFile.init(alloc, fileID, .SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
             errdefer file.deinit();
             try file.open();
+
             if (i == fileList.items.len - 1) {
                 self.activeFile = file;
                 try self.activeFile.?.seekLast();
@@ -122,15 +118,22 @@ pub const DB = struct {
             .value = value,
         };
         const res = entry.serialize();
+        const valPos = self.activeFile.?.getLastWrittenPos();
+        const ValSize = value.len;
+
         try self.activeFile.?.write(res);
-        try self.updateIndex(key, &entry);
+        const keyDirEntry: disk.KeyDirEntry = .{
+            .fileID = self.activeFile.?.fileID,
+            .valuePos = @intCast(valPos),
+            .valueSize = @intCast(ValSize),
+        };
+        try self.updateIndex(key, &keyDirEntry);
     }
 
-    fn updateIndex(self: *DB, key: []const u8, val: *const disk.FileEntry) !void {
-        var copy = try val.dup(self.allocator);
+    fn updateIndex(self: *DB, key: []const u8, keyDir: *const disk.KeyDirEntry) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
-        try self.index.put(key, &copy);
+        try self.index.put(key, keyDir.*);
     }
 
     pub fn load(self: *DB, key: []const u8) !void {
