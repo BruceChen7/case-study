@@ -30,7 +30,6 @@ pub const Dir = struct {
                 continue :next_entry;
             }
             const src_sub_path = try std.fs.path.join(alloc, &.{ curPath, entry.path });
-            std.debug.print("src_sub_path: {s}\n", .{src_sub_path});
             try res.append(src_sub_path[0..src_sub_path.len]);
             numAlloc += 1;
         }

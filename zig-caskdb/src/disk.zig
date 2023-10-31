@@ -72,7 +72,7 @@ pub const CaskFile = struct {
     file: ?std.fs.File,
 
     pub fn init(alloc: std.mem.Allocator, fileID: u32, fileType: FileType, ext: []const u8, dir: std.fs.Dir) !CaskFile {
-        var dirPath = try dir.realpathAlloc(std.testing.allocator, ".");
+        var dirPath = try dir.realpathAlloc(alloc, ".");
         defer alloc.free(dirPath);
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
         var subPath = try std.fmt.bufPrint(&buf, "{d}{s}", .{ fileID, ext });
@@ -99,7 +99,6 @@ pub const CaskFile = struct {
         if (self.file) |f| {
             f.close();
         }
-        std.debug.print("{s}", .{self.path});
         self.file = try std.fs.openFileAbsolute(self.path, .{ .mode = .read_write });
     }
     pub fn seekLast(self: *CaskFile) !void {
