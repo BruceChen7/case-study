@@ -5,14 +5,20 @@ pub const FileEntry = struct {
     key: []const u8,
     value: []const u8,
 
-    pub fn serialize(self: *const FileEntry) []const u8 {
+    pub fn serialize(
+        self: *const FileEntry,
+        alloc: std.mem.Allocator,
+    ) ![]const u8 {
         const len = 4 + 4 + self.keySize + self.valueSize;
-        var fbs = std.io.BufferedWriter(len, u8);
+        var buf: []u8 = try alloc.alloc(u8, len);
+        errdefer alloc.free(buf);
+        var fbs = std.io.fixedBufferStream(buf);
         const writer = fbs.writer();
         try writer.writeIntLittle(u32, self.keySize);
         try writer.writeIntLittle(u32, self.valueSize);
         try writer.writeAll(self.key);
         try writer.writeAll(self.value);
+        return fbs.getWritten();
     }
     pub fn deserialize(self: *FileEntry, data: []const u8) void {
         _ = data;

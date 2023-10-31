@@ -117,15 +117,17 @@ pub const DB = struct {
             .key = key,
             .value = value,
         };
-        const res = entry.serialize();
+        const res = try entry.serialize(self.allocator);
+        defer self.allocator.free(res);
+
         const valPos = self.activeFile.?.getLastWrittenPos();
-        const ValSize = value.len;
+        const valSize = value.len;
 
         try self.activeFile.?.write(res);
         const keyDirEntry: disk.KeyDirEntry = .{
             .fileID = self.activeFile.?.fileID,
             .valuePos = @intCast(valPos),
-            .valueSize = @intCast(ValSize),
+            .valueSize = @intCast(valSize),
         };
         try self.updateIndex(key, &keyDirEntry);
     }
