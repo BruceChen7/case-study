@@ -5,8 +5,9 @@ pub const FileEntry = struct {
     key: []const u8,
     value: []const u8,
 
+    const Self = @This();
     pub fn serialize(
-        self: *const FileEntry,
+        self: *const Self,
         alloc: std.mem.Allocator,
     ) ![]const u8 {
         const len = 4 + 4 + self.keySize + self.valueSize;
@@ -61,6 +62,7 @@ pub const CaskFile = struct {
     alloc: std.mem.Allocator,
     file: ?std.fs.File,
     lastPos: i64 = 0,
+    const Self = @This();
 
     pub fn init(alloc: std.mem.Allocator, fileID: u32, fileType: FileType, ext: []const u8, dir: std.fs.Dir) !CaskFile {
         var dirPath = try dir.realpathAlloc(alloc, ".");
@@ -87,13 +89,13 @@ pub const CaskFile = struct {
         return caskFile;
     }
 
-    pub fn open(self: *CaskFile) !void {
+    pub fn open(self: *Self) !void {
         if (self.file) |f| {
             f.close();
         }
         self.file = try std.fs.openFileAbsolute(self.path, .{ .mode = .read_write });
     }
-    pub fn seekLast(self: *CaskFile) !void {
+    pub fn seekLast(self: *Self) !void {
         if (self.file) |f| {
             const pos: i64 = @intCast(try f.getEndPos());
             self.lastPos = pos;
@@ -101,7 +103,7 @@ pub const CaskFile = struct {
         }
     }
 
-    pub fn seekPosAndRead(self: *CaskFile, alloc: std.mem.Allocator, pos: i64, nBytes: u32) ![]u8 {
+    pub fn seekPosAndRead(self: *Self, alloc: std.mem.Allocator, pos: i64, nBytes: u32) ![]u8 {
         if (self.file) |f| {
             try f.seekTo(@intCast(pos));
             var buf: []u8 = try alloc.alloc(u8, nBytes);
@@ -112,11 +114,11 @@ pub const CaskFile = struct {
         return ErrorDB.NotFound;
     }
 
-    pub fn getLastWrittenPos(self: *const CaskFile) i64 {
+    pub fn getLastWrittenPos(self: *const Self) i64 {
         return self.lastPos;
     }
 
-    pub fn readAllEntries(self: *CaskFile, alloc: std.mem.Allocator) !std.ArrayList(KeyDirEntry) {
+    pub fn readAllEntries(self: *Self, alloc: std.mem.Allocator) !std.ArrayList(KeyDirEntry) {
         var entries = std.ArrayList(KeyDirEntry).init(alloc);
         errdefer entries.deinit();
         try self.file.?.seekTo(0);
@@ -152,7 +154,7 @@ pub const CaskFile = struct {
         return entries;
     }
 
-    pub fn write(self: *CaskFile, data: []const u8) !void {
+    pub fn write(self: *Self, data: []const u8) !void {
         // TODO(ming.chen): use buffer write
         // var buff_out = std.io.bufferedWriter(config_file.writer());
         if (self.file) |f| {
@@ -161,7 +163,7 @@ pub const CaskFile = struct {
         }
     }
 
-    pub fn deinit(self: *CaskFile) void {
+    pub fn deinit(self: *Self) void {
         self.alloc.free(self.path);
         if (self.file) |f| {
             f.close();

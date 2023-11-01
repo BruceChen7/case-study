@@ -15,6 +15,8 @@ pub const DB = struct {
     mutex: std.Thread.Mutex,
     index: Index,
 
+    const Self = @This();
+
     pub fn init(alloc: std.mem.Allocator, dbOption: ?*const option.Option) !DB {
         var op: *option.Option = try alloc.create(option.Option);
         if (dbOption) |o| {
@@ -35,7 +37,7 @@ pub const DB = struct {
     }
 
     pub fn close(
-        self: *DB,
+        self: *Self,
     ) void {
         for (self.archiveFile.items) |*file| {
             file.deinit();
@@ -53,7 +55,7 @@ pub const DB = struct {
     }
 
     pub fn open(
-        self: *DB,
+        self: *Self,
     ) !void {
         // TODO(ming.chen): use another option
         const dir = directory.Dir.init(self.options.segmentFileDir);
@@ -84,7 +86,7 @@ pub const DB = struct {
         try self.buildIndex();
     }
 
-    fn buildIndex(self: *DB) !void {
+    fn buildIndex(self: *Self) !void {
         if (self.activeFile) |*file| {
             var entries = try file.readAllEntries(self.allocator);
             defer entries.deinit();
@@ -100,7 +102,7 @@ pub const DB = struct {
         }
     }
 
-    fn openSegmentFileList(self: *DB, fileList: std.ArrayList([]u8)) !void {
+    fn openSegmentFileList(self: *Self, fileList: std.ArrayList([]u8)) !void {
         const alloc = self.allocator;
 
         for (fileList.items, 0..) |f, i| {
@@ -123,7 +125,7 @@ pub const DB = struct {
         }
     }
 
-    pub fn store(self: *DB, key: []const u8, value: []const u8) !void {
+    pub fn store(self: *Self, key: []const u8, value: []const u8) !void {
         const entry: disk.FileEntry = .{
             .keySize = @intCast(key.len),
             .valueSize = @intCast(value.len),
@@ -148,7 +150,7 @@ pub const DB = struct {
         try self.updateIndex(keyDirEntry.key, &keyDirEntry);
     }
 
-    fn updateIndex(self: *DB, key: []const u8, keyDir: *const disk.KeyDirEntry) !void {
+    fn updateIndex(self: *Self, key: []const u8, keyDir: *const disk.KeyDirEntry) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
         var result = try self.index.getOrPut(key);
@@ -159,7 +161,7 @@ pub const DB = struct {
         result.value_ptr.* = keyDir.*;
     }
 
-    pub fn load(self: *DB, key: []const u8) ![]const u8 {
+    pub fn load(self: *Self, key: []const u8) ![]const u8 {
         self.mutex.lock();
         defer self.mutex.unlock();
         var it = self.index.get(key);

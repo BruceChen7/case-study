@@ -6,8 +6,9 @@ pub const Dir = struct {
     pub fn init(dir: std.fs.Dir) Dir {
         return .{ .dir = dir };
     }
+    const Self = @This();
 
-    pub fn getSpecificExtFile(self: *const Dir, ext: []const u8, alloc: std.mem.Allocator) !std.ArrayList([]u8) {
+    pub fn getSpecificExtFile(self: *const Self, ext: []const u8, alloc: std.mem.Allocator) !std.ArrayList([]u8) {
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
         var curPath = try self.dir.realpath(".", &buf);
         // iterate all files
