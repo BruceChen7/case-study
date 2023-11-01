@@ -45,6 +45,10 @@ pub const DB = struct {
         if (self.activeFile) |*file| {
             file.deinit();
         }
+        var iter = self.index.iterator();
+        while (iter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+        }
         self.index.deinit();
     }
 
@@ -81,9 +85,18 @@ pub const DB = struct {
     }
 
     fn buildIndex(self: *DB) !void {
-        for (self.archiveFile.items) |*file| {
-            _ = file;
-            // try file.buildIndex();
+        if (self.activeFile) |*file| {
+            var entries = try file.readAllEntries(self.allocator);
+            defer entries.deinit();
+            for (entries.items) |entry| {
+                const result = try self.index.getOrPut(entry.key);
+                if (result.found_existing) {
+                    self.allocator.free(result.value_ptr.*.key);
+                    result.value_ptr.* = entry;
+                }
+                result.key_ptr.* = entry.key;
+                result.value_ptr.* = entry;
+            }
         }
     }
 
@@ -120,22 +133,30 @@ pub const DB = struct {
         const res = try entry.serialize(self.allocator);
         defer self.allocator.free(res);
 
-        const valPos = self.activeFile.?.getLastWrittenPos();
+        const valPos = self.activeFile.?.getLastWrittenPos() + 8 + @as(u32, @intCast(key.len));
         const valSize = value.len;
-
         try self.activeFile.?.write(res);
-        const keyDirEntry: disk.KeyDirEntry = .{
+
+        // allocate memory and copy key slice
+        const keyDirEntry = disk.KeyDirEntry{
             .fileID = self.activeFile.?.fileID,
             .valuePos = @intCast(valPos),
             .valueSize = @intCast(valSize),
+            .key = try self.allocator.dupe(u8, key),
         };
-        try self.updateIndex(key, &keyDirEntry);
+        errdefer self.allocator.free(keyDirEntry.key);
+        try self.updateIndex(keyDirEntry.key, &keyDirEntry);
     }
 
     fn updateIndex(self: *DB, key: []const u8, keyDir: *const disk.KeyDirEntry) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
-        try self.index.put(key, keyDir.*);
+        var result = try self.index.getOrPut(key);
+        if (result.found_existing) {
+            self.allocator.free(result.value_ptr.*.key);
+        }
+        result.key_ptr.* = keyDir.key;
+        result.value_ptr.* = keyDir.*;
     }
 
     pub fn load(self: *DB, key: []const u8) ![]const u8 {

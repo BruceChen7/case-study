@@ -35,6 +35,7 @@ pub const KeyDirEntry = struct {
     fileID: u32,
     valueSize: u32,
     valuePos: u32,
+    key: []const u8,
 };
 
 const EntryState = enum {
@@ -50,6 +51,7 @@ pub const FileType = enum {
 
 pub const ErrorDB = error{
     NotFound,
+    InvalidSegmentFile,
 };
 
 pub const CaskFile = struct {
@@ -112,6 +114,42 @@ pub const CaskFile = struct {
 
     pub fn getLastWrittenPos(self: *const CaskFile) i64 {
         return self.lastPos;
+    }
+
+    pub fn readAllEntries(self: *CaskFile, alloc: std.mem.Allocator) !std.ArrayList(KeyDirEntry) {
+        var entries = std.ArrayList(KeyDirEntry).init(alloc);
+        errdefer entries.deinit();
+        try self.file.?.seekTo(0);
+        var lastPost: u32 = 0;
+        var lastValPos: u32 = 0;
+        read: while (true) {
+            const keySize = self.file.?.reader().readIntLittle(u32) catch |err| {
+                if (err == error.EndOfStream) {
+                    break :read;
+                }
+                return err;
+            };
+            if (keySize == 0) {
+                break :read;
+            }
+            const valueSize = try self.file.?.reader().readIntLittle(u32);
+            // read key
+            var key = try alloc.alloc(u8, keySize);
+            const readKeySize = try self.file.?.readAll(key);
+            if (readKeySize != keySize) {
+                return ErrorDB.InvalidSegmentFile;
+            }
+            lastValPos = lastPost + 4 + 4 + keySize;
+            lastPost += 4 + 4 + keySize + valueSize;
+            try entries.append(.{
+                .fileID = self.fileID,
+                .valueSize = valueSize,
+                .valuePos = lastValPos,
+                .key = key,
+            });
+            try self.file.?.seekTo(lastPost);
+        }
+        return entries;
     }
 
     pub fn write(self: *CaskFile, data: []const u8) !void {
