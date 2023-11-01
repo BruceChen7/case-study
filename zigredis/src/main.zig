@@ -14,7 +14,7 @@ fn setupCompletion(alloc: std.mem.Allocator) !void {
     const fields = @typeInfo(req.CommandType).Enum.fields;
     inline for (fields) |field| {
         // 与C 交互的字符串一定要记得这里初始化为0
-        var buf = try alloc.alloc(u8, field.name.len + 1);
+        var buf = try alloc.alloc(u8, field.name.len);
         @memset(buf, 0);
         var name = std.ascii.lowerString(buf, field.name);
         try cmdCompleteList.append(name);
@@ -109,6 +109,7 @@ pub fn main() !void {
         var actRsp = rsp_buf[0..rsp_size];
         var response = rsp.Resp.init(actRsp);
         var val = try response.parse(alloc);
+
         val.print();
         if (val.ownedData) {
             val.deinit(alloc);

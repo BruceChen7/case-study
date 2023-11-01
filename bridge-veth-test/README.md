@@ -1,6 +1,6 @@
 ## 什么是 bridge
 * [Linux 虚拟网络设备](https://morven.life/posts/networking-2-virtual-devices/)
-* 一般叫作网桥，也是一种虚拟网络设备，
+* 叫作网桥，是一种虚拟网络设备，
 * 所以具有虚拟网络设备的特征，可以配置 IP、MAC 地址等。
 * bridge 是一个虚拟交换机，和物理交换机有类似的功能。
     * bridge 一端连接着协议栈，
@@ -104,6 +104,6 @@
     1 packets transmitted, 1 received, 0% packet loss, time 0ms
     rtt min/avg/max/mdev = 0.121/0.121/0.121/0.000 ms
     ```
-* 其实当去掉 veth0 的 IP，而给 br0 配置了 IP 之后，协议栈在**路由的时候不会将数据包发给 veth0**，
-* 为了表达更直观，协议栈和 veth0 之间的连接线去掉，**这时候的 veth0 相当于一根网线**。
+* 当去掉 veth0 的 IP，而给 br0 配置了 IP 之后，协议栈在**路由的时候不会将数据包发给 veth0**，
+* 为表达更直观，协议栈和 veth0 之间的连接线去掉，**这时候的 veth0 相当于一根网线**。
 
