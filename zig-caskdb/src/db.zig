@@ -99,6 +99,8 @@ pub const DB = struct {
                 result.key_ptr.* = entry.key;
                 result.value_ptr.* = entry;
             }
+        } else {
+            // TODO(ming.chen): build from merge file or segment file
         }
     }
 

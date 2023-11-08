@@ -158,7 +158,6 @@ pub const Resp = struct {
                 errdefer alloc.free(res);
 
                 var i: u32 = 0;
-                // TODO(ming.chen): 这里的可能的内存泄漏
                 while (i < array_len) : (i += 1) {
                     const length = if (lines.next()) |l| parseLength(l) catch -1 else -2;
                     if (length == -1) {
