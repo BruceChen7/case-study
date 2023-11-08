@@ -1,10 +1,11 @@
 const std = @import("std");
 const option = @import("option.zig");
 const disk = @import("disk.zig");
-const directory = @import("dir.zig");
+const Dir = @import("dir.zig").Dir;
 
 const ArchiveFileList = std.ArrayList(disk.CaskFile);
 const Index = std.StringHashMap(disk.KeyDirEntry);
+
 pub const DB = struct {
     allocator: std.mem.Allocator,
     activeFile: ?disk.CaskFile,
@@ -14,6 +15,7 @@ pub const DB = struct {
     pendingWring: []const u8,
     mutex: std.Thread.Mutex,
     index: Index,
+    workingDir: ?Dir = null,
 
     const Self = @This();
 
@@ -47,6 +49,10 @@ pub const DB = struct {
         if (self.activeFile) |*file| {
             file.deinit();
         }
+
+        if (self.workingDir) |*dir| {
+            dir.deinit();
+        }
         var iter = self.index.iterator();
         while (iter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
@@ -58,8 +64,12 @@ pub const DB = struct {
         self: *Self,
     ) !void {
         // TODO(ming.chen): use another option
-        const dir = directory.Dir.init(self.options.segmentFileDir);
-        var segmentFileList = try dir.getSpecificExtFile(self.options.segmentFileExt, self.allocator);
+        self.workingDir = Dir.init(self.options.segmentFileDir);
+        // FIXME(ming.chen):  use another option
+        try self.workingDir.?.lock("1.lock");
+        errdefer self.workingDir.?.deinit();
+
+        var segmentFileList = try self.workingDir.?.getSpecificExtFile(self.options.segmentFileExt, self.allocator);
 
         defer segmentFileList.deinit();
         defer for (segmentFileList.items) |f| {

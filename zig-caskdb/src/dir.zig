@@ -2,11 +2,39 @@ const std = @import("std");
 const option = @import("option.zig");
 
 pub const Dir = struct {
-    dir: std.fs.Dir,
-    pub fn init(dir: std.fs.Dir) Dir {
-        return .{ .dir = dir };
-    }
     const Self = @This();
+    dir: std.fs.Dir,
+    lockFd: ?std.os.fd_t = null,
+    pub fn init(dir: std.fs.Dir) Dir {
+        return .{
+            .dir = dir,
+        };
+    }
+    pub fn deinit(self: *Self) void {
+        if (self.lockFd) |fd| {
+            std.os.close(fd);
+        }
+    }
+    pub fn lock(self: *Self, fileName: []const u8) !void {
+        // open the directory
+        const fd = try std.os.openat(self.dir.fd, fileName, std.os.O.CREAT | std.os.O.RDONLY, 0o644);
+        errdefer std.os.close(fd);
+        // set fd is non-blocking
+        _ = std.os.fcntl(fd, std.os.F.SETFL, std.os.O.NONBLOCK) catch |err| {
+            std.debug.print("error: {s}\n", .{@errorName(err)});
+            return err;
+        };
+
+        // try to lock the directory, using flock
+        std.os.flock(fd, std.os.LOCK.EX) catch |err| {
+            if (err == error.WouldBlock) {
+                std.debug.print("directory is locked, another process is using it", .{});
+                std.process.exit(1);
+            }
+            std.debug.print("error: {s}\n", .{@errorName(err)});
+            return err;
+        };
+    }
 
     pub fn getSpecificExtFile(self: *const Self, ext: []const u8, alloc: std.mem.Allocator) !std.ArrayList([]u8) {
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
