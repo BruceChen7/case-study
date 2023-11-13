@@ -3,6 +3,7 @@ const option = @import("option.zig");
 const disk = @import("disk.zig");
 const Dir = @import("dir.zig").Dir;
 
+const CaskFile = disk.CaskFile;
 const ArchiveFileList = std.ArrayList(disk.CaskFile);
 const Index = std.StringHashMap(disk.KeyDirEntry);
 
@@ -78,7 +79,7 @@ pub const DB = struct {
         // 没有文件
         if (segmentFileList.items.len == 0) {
             // 新创建一个segment 文件，并打开
-            var file = try disk.CaskFile.create(self.allocator, 0, disk.FileType.SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
+            var file = try CaskFile.create(self.allocator, 0, disk.FileType.SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
             errdefer file.deinit();
             self.activeFile = file;
             try self.activeFile.?.open();
@@ -124,7 +125,7 @@ pub const DB = struct {
             const fileIDStr = it.first();
             // convert fileIDStr to u32
             const fileID = try std.fmt.parseInt(u32, fileIDStr, 10);
-            var file = try disk.CaskFile.init(alloc, fileID, .SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
+            var file = try CaskFile.init(alloc, fileID, .SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
             errdefer file.deinit();
             try file.open();
 
