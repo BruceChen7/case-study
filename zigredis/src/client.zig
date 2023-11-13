@@ -6,12 +6,16 @@ pub const Client = struct {
     host: []const u8,
     port: u16,
     stream: ?net.Stream,
-
-    pub fn init(host: []const u8, port: u16) Client {
+    read_buf: []u8,
+    alloc: std.mem.Allocator,
+    pub fn init(host: []const u8, port: u16, alloc: mem.Allocator) !Client {
+        var buf = try alloc.alloc(u8, 1024 * 16);
         return Client{
             .host = if (host.len == 0) "localhost" else host,
             .port = port,
             .stream = null,
+            .read_buf = buf,
+            .alloc = alloc,
         };
     }
 
@@ -32,6 +36,7 @@ pub const Client = struct {
         if (self.stream) |s| {
             s.close();
         }
+        self.alloc.free(self.read_buf);
     }
 
     pub fn sendTo(self: *Client, alloc: mem.Allocator, buf: []const u8) !void {
@@ -50,8 +55,9 @@ pub const Client = struct {
         }
     }
 
-    pub fn read(self: *Client, buf: []u8) !usize {
+    pub fn read(self: *Client) ![]u8 {
         var cnt: usize = 0;
+        var buf = self.read_buf;
         retry: for (0..3) |_| {
             cnt = self.stream.?.read(buf) catch |err| {
                 // 只重试3次
@@ -63,11 +69,12 @@ pub const Client = struct {
             };
             break :retry;
         }
-        return cnt;
+        return self.read_buf[0..cnt];
     }
 };
 
 test "client" {
-    var client = Client.init("127.0.0.1", 6379);
+    var alloc = std.testing.allocator;
+    var client = try Client.init("127.0.0.1", 6379, alloc);
     try client.connect(std.testing.allocator);
 }
