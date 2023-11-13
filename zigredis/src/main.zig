@@ -103,6 +103,7 @@ pub fn main() !void {
 
         try c.sendTo(alloc, serializeRsp.res[0..serializeRsp.len]);
 
+        // TODO(ming.chen): rewrite it
         var rsp_buf = try alloc.alloc(u8, 1024);
         defer alloc.free(rsp_buf);
         const rsp_size = try c.read(rsp_buf);
