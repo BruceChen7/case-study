@@ -61,9 +61,9 @@ pub fn main() !void {
         std.process.exit(1);
     }
 
-    var host = if (args.len == 1) "127.0.0.1" else args[2];
-    var port = if (args.len == 1) 6379 else std.fmt.parseInt(u16, args[4], 10) catch 6379;
-    var c = client.Client.init(host, port);
+    const host = if (args.len == 1) "127.0.0.1" else args[2];
+    const port = if (args.len == 1) 6379 else std.fmt.parseInt(u16, args[4], 10) catch 6379;
+    var c = try client.Client.init(host, port, alloc);
     try c.connect(alloc);
     defer c.deinit();
 
@@ -103,14 +103,9 @@ pub fn main() !void {
 
         try c.sendTo(alloc, serializeRsp.res[0..serializeRsp.len]);
 
-        // TODO(ming.chen): rewrite it
-        var rsp_buf = try alloc.alloc(u8, 1024);
-        defer alloc.free(rsp_buf);
-        const rsp_size = try c.read(rsp_buf);
-        var actRsp = rsp_buf[0..rsp_size];
+        const actRsp = try c.read();
         var response = rsp.Resp.init(actRsp);
         var val = try response.parse(alloc);
-
         val.print();
         if (val.ownedData) {
             val.deinit(alloc);
