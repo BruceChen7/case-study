@@ -84,7 +84,8 @@ pub const CaskFile = struct {
     }
 
     pub fn create(alloc: std.mem.Allocator, fileID: u32, fileType: FileType, ext: []const u8, dirPath: []const u8) !CaskFile {
-        var dir = try std.fs.openDirAbsolute(dirPath, .{});
+        const trimmedPath = std.mem.trim(u8, dirPath, &[_]u8{0});
+        var dir = try std.fs.openDirAbsolute(trimmedPath, .{});
         var caskFile = try init(alloc, fileID, fileType, ext, dirPath);
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
         var subPath = try std.fmt.bufPrint(&buf, "{d}{s}", .{ fileID, ext });

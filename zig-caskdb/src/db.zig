@@ -79,7 +79,7 @@ pub const DB = struct {
         // 没有文件
         if (segmentFileList.items.len == 0) {
             // 新创建一个segment 文件，并打开
-            var file = try CaskFile.create(self.allocator, 0, disk.FileType.SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir[0..]);
+            var file = try CaskFile.create(self.allocator, 0, disk.FileType.SEGMENT, self.options.segmentFileExt, &self.options.segmentFileDir);
             errdefer file.deinit();
             self.activeFile = file;
             try self.activeFile.?.open();
