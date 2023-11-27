@@ -7,8 +7,9 @@ pub const Dir = struct {
     dir: std.fs.Dir,
     lockFd: ?std.os.fd_t = null,
     pub fn init(dirPath: []const u8) !Dir {
-        // FIXME
-        const dir = try std.fs.openDirAbsolute(dirPath, .{});
+        // trim 0x00 from dirPath
+        const trimmedPath = std.mem.trim(u8, dirPath, &[_]u8{0});
+        const dir = try std.fs.openDirAbsolute(trimmedPath, .{});
         return .{
             .dir = dir,
         };
@@ -17,6 +18,7 @@ pub const Dir = struct {
         if (self.lockFd) |fd| {
             std.os.close(fd);
         }
+        self.dir.close();
     }
     pub fn lock(self: *Self, fileName: []const u8) !void {
         // open the directory

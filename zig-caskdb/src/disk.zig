@@ -65,7 +65,8 @@ pub const CaskFile = struct {
     const Self = @This();
 
     pub fn init(alloc: std.mem.Allocator, fileID: u32, fileType: FileType, ext: []const u8, path: []const u8) !CaskFile {
-        var dir = try std.fs.openDirAbsolute(path, .{});
+        const trimmedPath = std.mem.trim(u8, path, &[_]u8{0});
+        var dir = try std.fs.openDirAbsolute(trimmedPath, .{});
         var dirPath = try dir.realpathAlloc(alloc, ".");
         defer alloc.free(dirPath);
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
