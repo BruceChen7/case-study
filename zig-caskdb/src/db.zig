@@ -65,7 +65,7 @@ pub const DB = struct {
         self: *Self,
     ) !void {
         // TODO(ming.chen): use another option
-        self.workingDir = Dir.init(self.options.segmentFileDir);
+        self.workingDir = try Dir.init(self.options.segmentFileDir[0..]);
         // FIXME(ming.chen):  use another option
         try self.workingDir.?.lock("1.lock");
         errdefer self.workingDir.?.deinit();
@@ -79,7 +79,7 @@ pub const DB = struct {
         // 没有文件
         if (segmentFileList.items.len == 0) {
             // 新创建一个segment 文件，并打开
-            var file = try CaskFile.create(self.allocator, 0, disk.FileType.SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
+            var file = try CaskFile.create(self.allocator, 0, disk.FileType.SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir[0..]);
             errdefer file.deinit();
             self.activeFile = file;
             try self.activeFile.?.open();
@@ -125,7 +125,7 @@ pub const DB = struct {
             const fileIDStr = it.first();
             // convert fileIDStr to u32
             const fileID = try std.fmt.parseInt(u32, fileIDStr, 10);
-            var file = try CaskFile.init(alloc, fileID, .SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir);
+            var file = try CaskFile.init(alloc, fileID, .SEGMENT, self.options.segmentFileExt, self.options.segmentFileDir[0..]);
             errdefer file.deinit();
             try file.open();
 

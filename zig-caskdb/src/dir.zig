@@ -1,11 +1,14 @@
 const std = @import("std");
 const option = @import("option.zig");
+const print = std.debug.print;
 
 pub const Dir = struct {
     const Self = @This();
     dir: std.fs.Dir,
     lockFd: ?std.os.fd_t = null,
-    pub fn init(dir: std.fs.Dir) Dir {
+    pub fn init(dirPath: []const u8) !Dir {
+        // FIXME
+        const dir = try std.fs.openDirAbsolute(dirPath, .{});
         return .{
             .dir = dir,
         };
@@ -67,12 +70,12 @@ pub const Dir = struct {
 };
 
 test "get specific ext file" {
-    // 获取当前目录
+    // 获取当前目录path
     var dir = std.fs.cwd();
     var dirPath = try dir.realpathAlloc(std.testing.allocator, ".");
     defer std.testing.allocator.free(dirPath);
     // create file
-    var opt = option.default();
+    const opt = option.default();
     const fileName = try std.fmt.allocPrint(std.testing.allocator, "{d}{s}", .{ 2, opt.mergefileExt });
     defer std.testing.allocator.free(fileName);
     try std.testing.expectEqualSlices(u8, "2.merge", fileName);
@@ -82,7 +85,8 @@ test "get specific ext file" {
     defer file.close();
     defer dir.deleteFile(fileName) catch unreachable;
 
-    const curDir = Dir.init(dir);
+    // 获取当前目录absolute path
+    const curDir = try Dir.init(dirPath);
     const fileList = curDir.getSpecificExtFile(opt.mergefileExt, std.testing.allocator) catch unreachable;
     errdefer fileList.deinit();
     errdefer for (fileList.items) |f| {
