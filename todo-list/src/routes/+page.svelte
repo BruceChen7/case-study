@@ -1,14 +1,14 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    // array of string
+    import type { PageData } from "./$types";
+    export let data: PageData;
 
-    let data: string[] = [];
-    onMount(async () => {
-        const resp = await fetch("http://127.0.0.1:8080/");
-        const res = await resp.json();
-        console.log(res);
-        data = res.data;
-    });
+    function handleKeydown(event: KeyboardEvent) {
+        if (event.ctrlKey && event.key === "k") {
+            event.preventDefault();
+            console.log("input element");
+            // return input html element
+        }
+    }
 </script>
 
 <!--定义的是一个页面的header结构-->
@@ -18,11 +18,13 @@
     <meta name="description" content="Svelte demo app" />
 </svelte:head>
 
+<svelte:window on:keydown={handleKeydown} />
+
 <div class="container mx-auto w-6/12 py-4">
     <ul
         class="max-auto space-y-2 text-gray-700 list-disc list-inside dark:text-gray-400"
     >
-        {#each data as row}
+        {#each data.todoList.data as row}
             <li
                 class="flex mb-2 list-disc marker:text-blue-200 justify-between"
             >
