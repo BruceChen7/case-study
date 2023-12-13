@@ -1,6 +1,6 @@
 module github.com/BruceChen7/case-study/ebpf-cilium-golang-vfs-read-latency
 
-go 1.21.0
+go 1.21
 
 require (
 	github.com/cilium/ebpf v0.11.0 // indirect
