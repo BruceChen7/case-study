@@ -1,16 +1,4 @@
-# Xmake cache
-.xmake/
-build/
-.vscode/
-zig-out/
-zig-cache/
-
-# MacOS Cache
 .DS_Store
-.merge
-*.segment
-
-
 node_modules
 /build
 /.svelte-kit
