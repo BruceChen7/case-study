@@ -1,6 +1,6 @@
 module github.com/BruceChen7/case-study/go-context
 
-go 1.21.0
+go 1.21
 
 require github.com/stretchr/testify v1.8.4
 
