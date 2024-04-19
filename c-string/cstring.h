@@ -13,18 +13,17 @@ typedef size_t usize;
 typedef ptrdiff_t size;
 
 #define sizeof(x) (size)sizeof(x)
-#define alignof(x) (size)_Alignof(x)
-#define countof(x) (size)sizeof(x)/sizeof(*x)
+#define alignof(x) (size) _Alignof(x)
+#define countof(x) (size)sizeof(x) / sizeof(*x)
 #define lengthof(s) (countof(s) - 1)
 
-#define S(s) (s8) { (u8 *)(s), lengthof(s)}
+#define S(s)                                                                   \
+  (s8) { (u8 *)(s), lengthof(s) }
 
-typedef struct s8  s8;
+typedef struct s8 s8;
 
-s8 s8Span(u8 *begin, u8* end);
+s8 s8Span(u8 *begin, u8 *end);
 
 size s8Cmp(s8 a, s8 b);
-
-
 
 #endif //
