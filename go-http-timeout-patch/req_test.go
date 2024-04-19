@@ -18,7 +18,6 @@ func TestHttpRequestTimeout(t *testing.T) {
 		time.Sleep(5 * time.Second)
 	}))
 	defer ts.Close()
-	// get baidu.com response
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()

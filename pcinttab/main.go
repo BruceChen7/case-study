@@ -34,6 +34,7 @@ func goSymTable() (*gosym.Table, error) {
 	}
 	return gosym.NewTable(symTableData, lineTable)
 }
+
 func run() error {
 	symTable, err := goSymTable()
 	if err != nil {
@@ -52,4 +53,3 @@ func callers() []uintptr {
 	pcs = pcs[0:n]
 	return pcs
 }
-

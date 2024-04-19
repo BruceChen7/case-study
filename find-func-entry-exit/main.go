@@ -147,4 +147,3 @@ func findFuncRangeAddrFromDwarf(dw *dwarf.Data, funcName string) (uint64, uint64
 	}
 	return 0, 0, errors.New(fmt.Sprintf("could not find function %s", funcName))
 }
-
