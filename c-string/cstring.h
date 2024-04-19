@@ -1,5 +1,6 @@
 #ifndef __C_STRING_H__
 #define __C_STRING_H__
+#pragma once
 // https://github.com/skeeto/scratch/blob/master/misc/treap.c
 #include <stddef.h>
 #include <stdint.h>
