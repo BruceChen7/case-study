@@ -4,10 +4,9 @@ build/
 .vscode/
 zig-out/
 zig-cache/
+target/
 
 # MacOS Cache
 .DS_Store
 .merge
 *.segment
-
-
