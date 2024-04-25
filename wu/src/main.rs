@@ -1,5 +1,9 @@
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use ratatui::{prelude::*, widgets::Paragraph, Frame};
+use ratatui::{
+    prelude::*,
+    widgets::{Cell, Paragraph, Row, Table, TableState},
+    Frame,
+};
 use std::io::{self, Result};
 
 mod tui;
@@ -9,17 +13,72 @@ pub struct AppTab {}
 
 impl AppTab {
     pub fn render(&self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
-        let horizontal = Layout::horizontal([Constraint::Min(0)]);
+        let horizontal = Layout::horizontal([Constraint::Min(area.width)]);
         let [title] = horizontal.areas(area);
-        Paragraph::new(Span::styled("WU", Style::new().fg(Color::DarkGray))).render(title, buf)
+
+        let title_text =
+            Text::styled("WU", Style::new().fg(Color::Green)).alignment(Alignment::Center);
+        Paragraph::new(title_text)
+            .alignment(Alignment::Center)
+            .render(title, buf)
     }
 }
 
 #[derive(Debug, Default)]
-pub struct AppContent {}
+struct Entry {
+    url: String,
+}
+
+impl From<&str> for Entry {
+    fn from(s: &str) -> Self {
+        Self {
+            url: String::from(s),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AppContent {
+    entries: Vec<Entry>,
+    select_entries_index: usize,
+}
 
 impl AppContent {
-    pub fn render(&self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {}
+    pub fn new() -> Self {
+        Self {
+            entries: vec![
+                Entry::from("https://www.baidu.com"),
+                Entry::from("https://www.google.com"),
+            ],
+            select_entries_index: 0,
+        }
+    }
+
+    pub fn render(&self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
+        let entries_area = area.inner(&Margin {
+            vertical: 1,
+            horizontal: 1,
+        });
+        let mut entries_state = TableState::new()
+            .with_offset(0)
+            .with_selected(self.select_entries_index);
+        let header = Row::new(vec!["url", "description"]);
+        let width = [Constraint::Percentage(80), Constraint::Percentage(20)];
+
+        let row = Row::new([
+            Cell::from("https://www.baidu.com").style(Color::Green),
+            Cell::from("hello worldafafaf"),
+        ]);
+        let rows = vec![row];
+
+        let whole_table = Table::new(rows, width)
+            .header(header.style(Color::Green))
+            .column_spacing(2)
+            .highlight_symbol(" ")
+            .highlight_style(Style::new().add_modifier(Modifier::BOLD))
+            .highlight_spacing(ratatui::widgets::HighlightSpacing::WhenSelected);
+        StatefulWidget::render(whole_table, entries_area, buf, &mut entries_state);
+    }
 }
 
 #[derive(Debug, Default)]
