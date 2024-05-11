@@ -17,9 +17,9 @@ const RspData = union(RspType) {
     SimpleString: []const u8,
     SimpleErrors: []const u8,
     BulkString: []const u8,
+    Doubles: []const u8,
     Arrays: ?[][]const u8,
     Integer: []const u8,
-    Doubles: []const u8,
 };
 
 pub const ParsedContent = struct {
@@ -98,9 +98,9 @@ pub const Resp = struct {
             }
             if (std.mem.eql(u8, line[0..1], "+")) {
                 // is string
-                var buf = try alloc.alloc(u8, line.len + 1);
+                const buf = try alloc.alloc(u8, line.len + 1);
                 errdefer alloc.free(buf);
-                var res = try std.fmt.bufPrint(buf, "\"{s}\"", .{line[1..]});
+                const res = try std.fmt.bufPrint(buf, "\"{s}\"", .{line[1..]});
                 return .{ .data = .{ .SimpleString = res }, .ownedData = true };
             }
             if (std.mem.eql(u8, line[0..1], "-")) {
@@ -127,7 +127,7 @@ pub const Resp = struct {
                     }
                 }
                 const rsp_len = try std.fmt.parseInt(u32, buf, 10);
-                var l = lines.next();
+                const l = lines.next();
                 if (l == null) {
                     return RedisRspError.InvalidResp;
                 }
@@ -135,9 +135,9 @@ pub const Resp = struct {
                 if (buf.len != rsp_len) {
                     return RedisRspError.InvalidResp;
                 }
-                var res = try alloc.alloc(u8, rsp_len);
+                const res = try alloc.alloc(u8, rsp_len);
                 errdefer alloc.free(res);
-                std.mem.copy(u8, res, buf);
+                @memcpy(res, buf);
                 return .{ .data = .{ .BulkString = res }, .ownedData = true };
             }
             // means array
@@ -161,9 +161,9 @@ pub const Resp = struct {
                 while (i < array_len) : (i += 1) {
                     const length = if (lines.next()) |l| parseLength(l) catch -1 else -2;
                     if (length == -1) {
-                        var val = try alloc.alloc(u8, 3);
+                        const val = try alloc.alloc(u8, 3);
                         errdefer alloc.free(val);
-                        std.mem.copy(u8, val, "nil");
+                        @memcpy(val, "nil");
                         numAllocated += 1;
                         res[i] = val;
                         continue;
@@ -175,7 +175,7 @@ pub const Resp = struct {
                         if (l.len < length) {
                             return RedisRspError.InvalidResp;
                         }
-                        var val = try alloc.alloc(u8, @intCast(length));
+                        const val = try alloc.alloc(u8, @intCast(length));
                         errdefer alloc.free(val);
                         @memcpy(val, l[0..@intCast(length)]);
                         numAllocated += 1;
@@ -194,7 +194,7 @@ pub const Resp = struct {
 test "resp parse" {
     // create a string
     const data = "+OK\r\n";
-    var buf = data[0..data.len];
+    const buf = data[0..data.len];
     var resp = Resp.init(buf);
     var res = try resp.parse(
         std.testing.allocator,
@@ -205,7 +205,7 @@ test "resp parse" {
 
     // create a integer
     const data2 = ":123\r\n";
-    var buf2 = data2[0..data2.len];
+    const buf2 = data2[0..data2.len];
     var resp2 = Resp.init(buf2);
     var res2 = try resp2.parse(
         std.testing.allocator,
@@ -216,7 +216,7 @@ test "resp parse" {
 
     // array string
     const data3 = "*3\r\n$3\r\nfoo\r\n$3\r\nbar\r\n$-1\r\n";
-    var buf3 = data3[0..data3.len];
+    const buf3 = data3[0..data3.len];
     var resp3 = Resp.init(buf3);
     var res3 = try resp3.parse(
         std.testing.allocator,

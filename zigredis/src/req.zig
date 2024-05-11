@@ -2,10 +2,10 @@ const std = @import("std");
 
 pub const CommandType = enum {
     Get,
+    Incr,
     Set,
     Auth,
     Exit,
-    Incr,
     Ping,
     DEL,
     LPUSH,
@@ -139,7 +139,7 @@ pub const Request = struct {
                 return KV{ .key = null, .argsNum = @intCast(argNum), .value = null, .commandStr = @tagName(command) };
             },
             1 => {
-                var it = lines.next();
+                const it = lines.next();
                 if (it == null) {
                     return RedisClientError.InvalidCommandParam;
                 }
@@ -319,7 +319,7 @@ test "parse" {
     defer command.deinit();
     var arraryValues = std.ArrayList([]const u8).init(std.testing.allocator);
     var val1 = "1";
-    var sliceVal1: []const u8 = val1[0..];
+    const sliceVal1: []const u8 = val1[0..];
     const val2 = "2";
     try arraryValues.append(sliceVal1);
     try arraryValues.append(val2);

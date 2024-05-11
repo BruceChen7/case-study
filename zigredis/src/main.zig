@@ -14,9 +14,9 @@ fn setupCompletion(alloc: std.mem.Allocator) !void {
     const fields = @typeInfo(req.CommandType).Enum.fields;
     inline for (fields) |field| {
         // 与C 交互的字符串一定要记得这里初始化为0
-        var buf = try alloc.alloc(u8, field.name.len);
+        const buf = try alloc.alloc(u8, field.name.len);
         @memset(buf, 0);
-        var name = std.ascii.lowerString(buf, field.name);
+        const name = std.ascii.lowerString(buf, field.name);
         try cmdCompleteList.append(name);
     }
 }
@@ -47,7 +47,7 @@ pub fn completionCallback(buf: [*c]const u8, lc: [*c]linenose.linenoiseCompletio
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    var alloc = gpa.allocator();
+    const alloc = gpa.allocator();
     defer _ = gpa.deinit();
 
     // 获取命令行参数-h, -p
@@ -64,7 +64,7 @@ pub fn main() !void {
     const host = if (args.len == 1) "127.0.0.1" else args[2];
     const port = if (args.len == 1) 6379 else std.fmt.parseInt(u16, args[4], 10) catch 6379;
     var c = try client.Client.init(host, port, alloc);
-    try c.connect(alloc);
+    try c.connect();
     defer c.deinit();
 
     linenose.linenoiseSetMultiLine(0);
