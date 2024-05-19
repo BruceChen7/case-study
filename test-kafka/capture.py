@@ -73,6 +73,7 @@ def response(req):
                 src_port = packet[TCP].sport
                 dst_port = packet[TCP].dport
                 ## 如果tcp flag 是 PUSH 和ACK
+                # FIXME: more analysis
                 if src_port == 9093 and packet[TCP].flags == "PA":
                     # print("src port " + str(src_port) + " dst port " + str(dst_port))
                     tcp_payload = bytes(packet[TCP].payload)
