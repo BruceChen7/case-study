@@ -77,7 +77,10 @@ func Consumer(brokers []string, topic string, exitChan <-chan struct{}) {
 		default:
 		}
 		fmt.Printf("Waiting for messages...\n")
+		now := time.Now()
 		msg, err := r.ReadMessage(context.Background())
+		elapsed := time.Since(now)
+		fmt.Printf("elapsed %v\n", elapsed)
 		if err != nil && err != context.DeadlineExceeded {
 			panic(err)
 		}
