@@ -11,12 +11,12 @@ pub const FileEntry = struct {
         alloc: std.mem.Allocator,
     ) ![]const u8 {
         const len = 4 + 4 + self.keySize + self.valueSize;
-        var buf: []u8 = try alloc.alloc(u8, len);
+        const buf: []u8 = try alloc.alloc(u8, len);
         errdefer alloc.free(buf);
         var fbs = std.io.fixedBufferStream(buf);
         const writer = fbs.writer();
-        try writer.writeIntLittle(u32, self.keySize);
-        try writer.writeIntLittle(u32, self.valueSize);
+        try writer.writeInt(u32, self.keySize, .little);
+        try writer.writeInt(u32, self.valueSize, .little);
         try writer.writeAll(self.key);
         try writer.writeAll(self.value);
         return fbs.getWritten();
@@ -67,11 +67,11 @@ pub const CaskFile = struct {
     pub fn init(alloc: std.mem.Allocator, fileID: u32, fileType: FileType, ext: []const u8, path: []const u8) !CaskFile {
         const trimmedPath = std.mem.trim(u8, path, &[_]u8{0});
         var dir = try std.fs.openDirAbsolute(trimmedPath, .{});
-        var dirPath = try dir.realpathAlloc(alloc, ".");
+        const dirPath = try dir.realpathAlloc(alloc, ".");
         defer alloc.free(dirPath);
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-        var subPath = try std.fmt.bufPrint(&buf, "{d}{s}", .{ fileID, ext });
-        var name = try std.fs.path.join(alloc, &.{ dirPath, subPath });
+        const subPath = try std.fmt.bufPrint(&buf, "{d}{s}", .{ fileID, ext });
+        const name = try std.fs.path.join(alloc, &.{ dirPath, subPath });
         std.debug.assert(std.fs.path.isAbsolute(name));
         return .{
             .alloc = alloc,
@@ -88,8 +88,8 @@ pub const CaskFile = struct {
         var dir = try std.fs.openDirAbsolute(trimmedPath, .{});
         var caskFile = try init(alloc, fileID, fileType, ext, dirPath);
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-        var subPath = try std.fmt.bufPrint(&buf, "{d}{s}", .{ fileID, ext });
-        var file = try dir.createFile(subPath, .{ .truncate = true, .read = true, .exclusive = true });
+        const subPath = try std.fmt.bufPrint(&buf, "{d}{s}", .{ fileID, ext });
+        const file = try dir.createFile(subPath, .{ .truncate = true, .read = true, .exclusive = true });
         caskFile.file = file;
         return caskFile;
     }
@@ -111,7 +111,7 @@ pub const CaskFile = struct {
     pub fn seekPosAndRead(self: *Self, alloc: std.mem.Allocator, pos: i64, nBytes: u32) ![]u8 {
         if (self.file) |f| {
             try f.seekTo(@intCast(pos));
-            var buf: []u8 = try alloc.alloc(u8, nBytes);
+            const buf: []u8 = try alloc.alloc(u8, nBytes);
             const nSize = try f.readAll(buf);
             std.debug.assert(nSize == nBytes);
             return buf;
@@ -130,7 +130,7 @@ pub const CaskFile = struct {
         var lastPost: u32 = 0;
         var lastValPos: u32 = 0;
         read: while (true) {
-            const keySize = self.file.?.reader().readIntLittle(u32) catch |err| {
+            const keySize = self.file.?.reader().readInt(u32, .little) catch |err| {
                 if (err == error.EndOfStream) {
                     break :read;
                 }
@@ -139,9 +139,9 @@ pub const CaskFile = struct {
             if (keySize == 0) {
                 break :read;
             }
-            const valueSize = try self.file.?.reader().readIntLittle(u32);
+            const valueSize = try self.file.?.reader().readInt(u32, .little);
             // read key
-            var key = try alloc.alloc(u8, keySize);
+            const key = try alloc.alloc(u8, keySize);
             const readKeySize = try self.file.?.readAll(key);
             if (readKeySize != keySize) {
                 return ErrorDB.InvalidSegmentFile;

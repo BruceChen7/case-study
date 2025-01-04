@@ -9,7 +9,7 @@ pub fn main() !void {
     defer caskDB.close();
     try caskDB.open();
     try caskDB.store("foo", "bar");
-    var val = try caskDB.load("foo");
+    const val = try caskDB.load("foo");
     defer alloc.free(val);
     std.debug.print("{s}\n", .{val});
 }

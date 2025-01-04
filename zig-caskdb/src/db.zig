@@ -21,7 +21,7 @@ pub const DB = struct {
     const Self = @This();
 
     pub fn init(alloc: std.mem.Allocator, dbOption: ?*const option.Option) !DB {
-        var op: *option.Option = try alloc.create(option.Option);
+        const op: *option.Option = try alloc.create(option.Option);
         if (dbOption) |o| {
             op.* = o.*;
         } else {
@@ -166,7 +166,7 @@ pub const DB = struct {
     fn updateIndex(self: *Self, key: []const u8, keyDir: *const disk.KeyDirEntry) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
-        var result = try self.index.getOrPut(key);
+        const result = try self.index.getOrPut(key);
         if (result.found_existing) {
             self.allocator.free(result.value_ptr.*.key);
         }
@@ -177,7 +177,7 @@ pub const DB = struct {
     pub fn load(self: *Self, key: []const u8) ![]const u8 {
         self.mutex.lock();
         defer self.mutex.unlock();
-        var it = self.index.get(key);
+        const it = self.index.get(key);
         if (it) |entry| {
             const val = try self.activeFile.?.seekPosAndRead(self.allocator, entry.valuePos, entry.valueSize);
             return val;

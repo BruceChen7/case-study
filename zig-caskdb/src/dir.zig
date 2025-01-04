@@ -5,7 +5,7 @@ const print = std.debug.print;
 pub const Dir = struct {
     const Self = @This();
     dir: std.fs.Dir,
-    lockFd: ?std.os.fd_t = null,
+    lockFd: ?std.posix.fd_t = null,
     pub fn init(dirPath: []const u8) !Dir {
         // trim 0x00 from dirPath
         const trimmedPath = std.mem.trim(u8, dirPath, &[_]u8{0});
@@ -16,22 +16,23 @@ pub const Dir = struct {
     }
     pub fn deinit(self: *Self) void {
         if (self.lockFd) |fd| {
-            std.os.close(fd);
+            std.posix.close(fd);
         }
         self.dir.close();
     }
+
     pub fn lock(self: *Self, fileName: []const u8) !void {
         // open the directory
-        const fd = try std.os.openat(self.dir.fd, fileName, std.os.O.CREAT | std.os.O.RDONLY, 0o644);
-        errdefer std.os.close(fd);
-        // set fd is non-blocking
-        _ = std.os.fcntl(fd, std.os.F.SETFL, std.os.O.NONBLOCK) catch |err| {
-            std.debug.print("error: {s}\n", .{@errorName(err)});
-            return err;
+        const flags :std.posix.O = .{
+            .ACCMODE = .RDONLY,
+            .CREAT = true,
+            .NONBLOCK = true
         };
+        const fd = try std.posix.openat(self.dir.fd, fileName, flags, 0o644);
+        errdefer std.posix.close(fd);
 
         // try to lock the directory, using flock
-        std.os.flock(fd, std.os.LOCK.EX) catch |err| {
+        std.posix.flock(fd, std.posix.LOCK.EX) catch |err| {
             if (err == error.WouldBlock) {
                 std.debug.print("directory is locked, another process is using it", .{});
                 std.process.exit(1);
@@ -43,9 +44,9 @@ pub const Dir = struct {
 
     pub fn getSpecificExtFile(self: *const Self, ext: []const u8, alloc: std.mem.Allocator) !std.ArrayList([]u8) {
         var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-        var curPath = try self.dir.realpath(".", &buf);
+        const curPath = try self.dir.realpath(".", &buf);
         // iterate all files
-        var src_dir = try self.dir.openIterableDir(curPath, .{});
+        var src_dir = try self.dir.openDir(curPath, .{.iterate = true});
         defer src_dir.close();
         var it = try src_dir.walk(alloc);
         defer it.deinit();
@@ -73,8 +74,8 @@ pub const Dir = struct {
 
 test "get specific ext file" {
     // 获取当前目录path
-    var dir = std.fs.cwd();
-    var dirPath = try dir.realpathAlloc(std.testing.allocator, ".");
+    const dir = std.fs.cwd();
+    const dirPath = try dir.realpathAlloc(std.testing.allocator, ".");
     defer std.testing.allocator.free(dirPath);
     // create file
     const opt = option.default();
@@ -96,7 +97,7 @@ test "get specific ext file" {
     };
 
     for (fileList.items) |f| {
-        var name = try std.fs.path.join(std.testing.allocator, &.{ dirPath, "2.merge" });
+        const name = try std.fs.path.join(std.testing.allocator, &.{ dirPath, "2.merge" });
         defer std.testing.allocator.free(name);
         try std.testing.expectEqualSlices(u8, name, f);
     }

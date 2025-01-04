@@ -25,7 +25,7 @@ pub fn default() Option {
         .segmentFileDir = undefined,
     };
     // copy specified len of dirPath
-    std.mem.copy(u8, &res.mergeFileDir, dirPath[0..dirPath.len]);
-    std.mem.copy(u8, &res.segmentFileDir, dirPath[0..dirPath.len]);
+    std.mem.copyForwards(u8, &res.mergeFileDir, dirPath[0..dirPath.len]);
+    std.mem.copyForwards(u8, &res.segmentFileDir, dirPath[0..dirPath.len]);
     return res;
 }
