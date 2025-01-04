@@ -13,10 +13,9 @@ fn setupCompletion(alloc: std.mem.Allocator) !void {
     cmdCompleteList = CmdList.init(alloc);
     const fields = @typeInfo(req.CommandType).Enum.fields;
     inline for (fields) |field| {
-        // 与C 交互的字符串一定要记得这里初始化为0
-        const buf = try alloc.alloc(u8, field.name.len);
-        @memset(buf, 0);
-        const name = std.ascii.lowerString(buf, field.name);
+        // Allocate and zero-terminate in one operation
+        const name = try alloc.allocSentinel(u8, field.name.len, 0);
+        _ = std.ascii.lowerString(name, field.name);
         try cmdCompleteList.append(name);
     }
 }

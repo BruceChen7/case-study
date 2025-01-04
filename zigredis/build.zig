@@ -19,14 +19,14 @@ pub fn build(b: *std.Build) void {
         .name = "zigredis",
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
     exe.linkLibC();
-    exe.addIncludePath(.{ .path = "src/include" });
-    exe.addCSourceFile(.{ .file = .{ .path = "src/include/linenoise.c" }, .flags = &[_][]const u8{} });
+    exe.addIncludePath(b.path("src/include"));
+    exe.addCSourceFile(.{ .file = b.path("src/include/linenoise.c"), .flags = &[_][]const u8{} });
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -59,13 +59,13 @@ pub fn build(b: *std.Build) void {
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const req_unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/req.zig" },
+        .root_source_file = b.path("src/req.zig"),
         .target = target,
         .optimize = optimize,
     });
 
     const rsp_unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/rsp.zig" },
+        .root_source_file = b.path("src/rsp.zig"),
         .target = target,
         .optimize = optimize,
     });

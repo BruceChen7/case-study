@@ -312,6 +312,7 @@ test "command tests" {
     try std.testing.expect(std.mem.eql(u8, "*2\r\n$3\r\nGET\r\n$3\r\nkey\r\n", rsp.res[0..rsp.len]));
 }
 
+
 test "parse" {
     const req = @import("req.zig");
     var request = req.Request.init("LPUSH d 1 2");

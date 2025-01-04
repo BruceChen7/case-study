@@ -32,6 +32,7 @@ pub const Client = struct {
         var val: i32 = 1;
         try std.posix.setsockopt(self.stream.?.handle, std.posix.SOL.SOCKET, std.posix.SO.KEEPALIVE, std.mem.asBytes(&val));
     }
+
     pub fn deinit(self: *Client) void {
         if (self.stream) |s| {
             s.close();
